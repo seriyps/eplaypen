@@ -1,0 +1,18 @@
+% -*- mode: erlang -*-
+{application, eplaypen,
+ [
+  {description, "An Erlang playpen"},
+  {vsn, "0.0.1"},
+  %% {modules, [
+  %%            playpen
+  %%           ]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  sasl,
+                  crypto,
+                  cowboy
+                 ]},
+  {env, []}
+ ]}.
