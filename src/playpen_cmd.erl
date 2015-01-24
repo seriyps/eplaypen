@@ -12,17 +12,18 @@
 -export_type([playpen_opts/0, io_opts/0]).
 
 -type playpen_opts() ::
-        #{root => file:filename(),
+        #{executable => file:filename(),
+          root => file:filename(),              % required
           mount_proc => boolean(),
           mount_dev => boolean(),
-          bind => boolean(),
-          bind_rw => boolean(),
+          bind => [file:filename()],
+          bind_rw => [file:filename()],
           user => iodata(),
           hostname => iodata(),
           timeout => non_neg_integer(),
           memory_limit => pos_integer(),
           devices => [{file:filename(), [r | w | m]}],
-          syscalls => [binary()],
+          syscalls => [string()],
           syscalls_file => file:filename()}.
 
 -type io_opts() ::
@@ -62,9 +63,56 @@ cmd([_Callable | _Argv] = Cmd, Stdin, PPOpts, IOOpts) ->
     end,
     Response.
 
-%% TODO prepend `playpen <opts> --`
-build_playpen_argv(Cmd, _Opts) ->
-    Cmd.
+build_playpen_argv(Cmd, #{root := Root} = Opts) ->
+    Executable = case maps:find(executable, Opts) of
+                     {ok, P} -> P;
+                     error ->
+                         %% may return false!
+                         os:find_executable("playpen")
+                 end,
+    Cmd1 = [Root, "--" | Cmd],
+    Cmd2 = add_playpen_opts(Cmd1, maps:to_list(Opts)),
+    [Executable | Cmd2].
+    %% Cmd.
+
+add_playpen_opts(Cmd, []) ->
+    Cmd;
+add_playpen_opts(Cmd, [{mount_proc, true} | Opts]) ->
+    ["--mount-proc" | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{mount_dev, true} | Opts]) ->
+    ["--mount-dev" | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{bind, V} | Opts]) ->
+    Flags = ["-b" || _ <- V],
+    WithFlags = lists:zip(Flags, V),
+    WithFlags ++ add_playpen_opts(Cmd, Opts);
+add_playpen_opts(Cmd, [{bind_rw, V} | Opts]) ->
+    Flags = ["-B" || _ <- V],
+    WithFlags = lists:zip(Flags, V),
+    WithFlags ++ add_playpen_opts(Cmd, Opts);
+add_playpen_opts(Cmd, [{user, V} | Opts]) ->
+    ["--user", V | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{hostname, V} | Opts]) ->
+    ["--hostname", V | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{timeout, V} | Opts]) ->
+    ["--timeout", integer_to_list(V) | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{memory_limit, V} | Opts]) ->
+    ["--memory-limit", integer_to_list(V) | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{devices, V} | Opts]) ->
+    WithAttrs = [begin
+                     SAccess = lists:map(fun erlang:atom_to_list/1, Access),
+                     AccessStr = lists:flatten(SAccess),
+                     lists:flatten([Dev, $\:, AccessStr])
+                 end || {Dev, Access} <- V],
+    Csv = string:join(WithAttrs, ","),
+    ["--devices", Csv | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{syscalls, V} | Opts]) ->
+    Csv = string:join(V, ","),
+    ["--syscalls", Csv | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{syscalls_file, V} | Opts]) ->
+    ["--syscalls-file", V | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{_, _} | Opts]) ->
+    add_playpen_opts(Cmd, Opts).
+
 
 port_loop(Port, Opts) ->
     CallbackState = maps_get(output_callback_state, Opts, undefined),
