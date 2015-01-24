@@ -11,7 +11,7 @@
         <meta name="keywords" content="erlang, compiler, disassembler, preprocessor, evaluator, playpen, sandbox, playground"/>
     </head>
     <body>
-        <p id="control">
+        <div id="control">
             <button id="evaluate" title="Ctrl + Enter">evaluate</button>
             <button id="compile" title="Ctrl + Shift + Enter">compile</button>
             <!-- <button id="share">share</button> -->
@@ -37,7 +37,12 @@
                 <input type="checkbox" id="autoscroll"/>
                 Scroll output
             </label>
-        </p>
+            <div id="transport-spinner" class="spinner" style="display: none;">
+                <div class="bounce1"></div>
+                <div class="bounce2"></div>
+                <div class="bounce3"></div>
+            </div>
+        </div>
         <div id="editor">-module(main).
 -export([main/0]).
 

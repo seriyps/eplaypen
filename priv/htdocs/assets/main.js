@@ -7,6 +7,7 @@ $(function(){
     "use strict";
 
     function Output(selector) {
+        // API for output area
         var self = this;
         var $el = $(selector);
         this.autoscroll = false;
@@ -64,6 +65,7 @@ $(function(){
     }
 
     function Controls(editor, editorSession, transport, output) {
+        // UI operations
         var self = this;
         var $evaluate = $("#evaluate"),
             $compile = $("#compile"),
@@ -113,23 +115,36 @@ $(function(){
             })
         }
 
+        var progress = false;
         this.evaluate = function() {
+            if (progress) {
+                alert("In progress");
+                return;
+            }
+            progress = true;
             $buttons.prop("disabled", true);
 
             transport
                 .evaluate(editorSession.getValue(), $release.val())
                 .always(function() {
+                    progress = false;
                     $buttons.prop("disabled", false);
                 })
         };
         $evaluate.on('click', this.evaluate);
 
         this.compile = function() {
+            if (progress) {
+                alert("In progress");
+                return;
+            }
+            progress = true;
             $buttons.prop("disabled", true);
 
             transport
                 .compile(editorSession.getValue(), $release.val(), $emit.val())
                 .always(function() {
+                    progress = false;
                     $buttons.prop("disabled", false);
                 })
         };
@@ -144,17 +159,29 @@ $(function(){
 
         editor.commands.addCommand({
             name: "evaluate",
-            exec: evaluate,
+            exec: this.evaluate,
             bindKey: {win: "Ctrl-Enter", mac: "Ctrl-Enter"}
         });
         editor.commands.addCommand({
             name: "compile",
-            exec: compile,
+            exec: this.compile,
             bindKey: {win: "Ctrl-Shift-Enter", mac: "Ctrl-Shift-Enter"}
         });
     }
 
     function TextTransport(output) {
+        // AJAX + plaintext
+        var $spinner = $("#transport-spinner");
+        var timer = null;
+
+        $(document).ajaxSend(function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {$spinner.show()}, 1000);
+        }).ajaxComplete(function() {
+            clearTimeout(timer);
+            $spinner.hide()
+        })
+
         // contentType: "application/x-www-form-urlencoded" also accepted
         this.compile = function(code, release, emit) {
             return $.ajax("/api/compile", {
@@ -189,6 +216,7 @@ $(function(){
                 dataType: "text",
                 xhrFields: {
                     onprogress: function(e) {
+                        // stream output from chunked long-running response
                         var resp = e.currentTarget.response;
                         if (resp.length == progressOffset) return;
                         output.addStdout(resp.substring(progressOffset));
@@ -208,7 +236,7 @@ $(function(){
     function ByteProtocol() {}  // TODO: Accept: octet/stream
 
     function Pickler(editorSession, control) {
-        // restore
+        // restore controls and editor state from localstore or URL hash
 
         (function() {
             // from local storage
@@ -233,7 +261,6 @@ $(function(){
                     search = /([^&=]+)=?([^&]*)/g,
                     decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); };
 
-                console.log(qs)
                 var urlParams = {};
                 while (match = search.exec(qs)) {
                     var v = decode(match[2]);
@@ -242,14 +269,12 @@ $(function(){
                     else if (v == "false")
                         v = false;
                     urlParams[decode(match[1])] = v;
-                    console.log(match)
                 }
                 return urlParams;
             }
             var qsObj = parseQS(qs);
             control.deserialize(qsObj);
 
-            console.log(qsObj);
             if ("do_evaluate" in qsObj) control.evaluate();
             else if ("do_compile" in qsObj) control.compile();
         })();
