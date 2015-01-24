@@ -28,3 +28,10 @@ body, #control {
 #result:not(:empty) {
     border-top: 1px solid #ccc;
 }
+
+.error {
+    border-radius: 5px;
+    border: 3px solid #ecc;
+    background-color: #fdd;
+    padding: 10px;
+}
