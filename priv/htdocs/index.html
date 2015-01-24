@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Erlang playpen</title>
+        <link rel="stylesheet" href="/assets/main.css"/>
+        <script src="//code.jquery.com/jquery-2.1.3.min.js" charset="utf-8"></script>
+        <script src="//cdn.jsdelivr.net/ace/1.1.8/min/ace.js" charset="utf-8"></script>
+        <script src="/assets/main.js" charset="utf-8"></script>
+        <meta  name=description content="Online erlang compiler and evaluator. Run any erlang program in your browser." />
+        <meta name="keywords" content="erlang, compiler, disassembler, preprocessor, evaluator, playpen, sandbox, playground"/>
+    </head>
+    <body>
+        <p id="control">
+            <button id="evaluate" title="Ctrl + Enter">evaluate</button>
+            <button id="compile" title="Ctrl + Shift + Enter">compile</button>
+            <!-- <button id="share">share</button> -->
+            <select id="emit" title="Compile to...">
+                <option value="beam">Check for errors</option>
+                <option value="core">Core erlang (.core)</option>
+                <option value="S">Erlang assembler (.S)</option>
+                <option value="dis">Beam VM assembler (.dis)</option>
+                <option value="P">Preprocessed (.P)</option>
+                <option value="E">Expanded (.E)</option>
+            </select>
+            <select id="release" title="Erlang release">
+                <option>17.4</option>
+                <option>R16B03-1</option>
+                <option>R15B03-1</option>
+            </select>
+            <select id="kb-layout" title="Keyboard layout">
+                <option value="">Ace</option>
+                <option value="ace/keyboard/emacs">Emacs</option>
+                <option value="ace/keyboard/vim">Vim</option>
+            </select>
+            <label>
+                <input type="checkbox" id="autoscroll"/>
+                Scroll output
+            </label>
+        </p>
+        <div id="editor">-module(main).
+-export([main/0]).
+
+main() ->
+    io:format("Hello, world!").</div>
+        <pre id="result"></pre>
+    </body>
+    <!-- inspired by http://play.rust-lang.org/  -->
+</html>

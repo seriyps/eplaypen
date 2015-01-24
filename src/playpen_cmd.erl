@@ -44,6 +44,7 @@
       CallbackState :: term().
 cmd([_Callable | _Argv] = Cmd, Stdin, PPOpts, IOOpts) ->
     [Callable1 | Argv1] = build_playpen_argv(Cmd, PPOpts),
+    lager:debug("<~p> | ~p ~p", [iolist_size(Stdin), Callable1, Argv1]),
     Port = erlang:open_port(
              {spawn_executable, Callable1},
              [{args, Argv1},

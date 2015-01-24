@@ -118,9 +118,14 @@ handle_arguments(Req, State, Payload) ->
 
 -spec run(cowboy_req:req(), term(), list(), iodata()) -> {ok, cowboy_req:req(), term()}.
 run(Req, State, Argv, SourceCode) ->
-    {ok, Req1} = cowboy_req:chunked_reply(200, [{<<"content-type">>, <<"octet/stream">>}], Req),
     OutForm = text,
+    ContentType = case OutForm of
+                      text -> <<"text/plain">>;
+                      binary -> <<"octet/stream">>
+                  end,
+    {ok, Req1} = cowboy_req:chunked_reply(200, [{<<"content-type">>, ContentType}], Req),
     Callback = fun(Chunk, Req2) ->
+                       lager:debug("Chunk ~p", [iolist_size(Chunk)]),
                        ok = cowboy_req:chunk(output_frame(Chunk, OutForm), Req2),
                        Req2
                end,
@@ -150,21 +155,23 @@ output_frame(Chunk, binary) ->
     Size = <<1, (size(Chunk)):24/little>>,
     [Size, Chunk];
 output_frame(Chunk, text) ->
-    ["1|",
-     integer_to_binary(size(Chunk)),
-    "|", Chunk].
+    %% ["1|",
+    %%  integer_to_binary(size(Chunk)),
+    %% "|", Chunk].
+    Chunk.
 
 retcode_frame(Code, binary) ->
     <<2, Code>>;
 retcode_frame(Code, text) ->
-    ["2|", integer_to_binary(Code)].
+    %% ["2|", integer_to_binary(Code)].
+    [<<"\n------\nReturn code is ">>, integer_to_binary(Code)].
 
 output_too_large_frame(binary) ->
     <<3>>;
 output_too_large_frame(text) ->
-    <<"3">>.
+    <<"\n------\nOutput too large. Truncated.">>.
 
 timeout_frame(binary) ->
     <<4>>;
 timeout_frame(text) ->
-    <<"4">>.
+    <<"\n------\nTimeout">>.

@@ -29,4 +29,7 @@ fi
 source $ERL_RELEASES_PATH/$RELEASE/activate
 
 erlc -Wall $IN_FILE
-erl -noshell -s $IN_MOD main -s erlang halt
+# `+pc unicode` only >=R16
+# ERL_CRASH_DUMP=/dev/null erl -noshell -s $IN_MOD main -s erlang halt
+ERL_CRASH_DUMP=/dev/null \
+    erl -noshell -eval "try $IN_MOD:main() catch T:R -> io:format(standard_error, \"~p(~p)~n~p\", [T, R, erlang:get_stacktrace()]) end, erlang:halt()."
