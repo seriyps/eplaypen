@@ -2,34 +2,24 @@
 set -e
 set -o pipefail
 
-RELEASE=$1
-INPUT_SIZE=$2
+MODULE=$1
+RELEASE=$2
+INPUT_SIZE=$3
 
 WORKDIR=/tmp
 APP_ROOT=$(realpath $(dirname $0)/../..)
 ERL_RELEASES_PATH=$APP_ROOT/priv/erl_installations
 
-TMP_IN_MOD=in
-TMP_IN_FILE=${TMP_IN_MOD}.erl
+IN_FILE=${MODULE}.erl
 
 cd $WORKDIR
 
-head -c $INPUT_SIZE > $TMP_IN_FILE
-
-MAYBE_MOD=$(cat $TMP_IN_FILE | grep '\-module(' | sed -e 's/-module(\([0-9a-z]\+\))\..*/\1/')
-if [ -n "$MAYBE_MOD" ]; then
-    IN_MOD=$MAYBE_MOD
-    IN_FILE=${IN_MOD}.erl
-    mv $TMP_IN_FILE $IN_FILE
-else
-    IN_MOD=$TMP_IN_MOD
-    IN_FILE==${IN_MOD}.erl
-fi
+head -c $INPUT_SIZE > "$IN_FILE"
 
 source $ERL_RELEASES_PATH/$RELEASE/activate
 
-erlc -Wall $IN_FILE
+erlc -Wall "$IN_FILE"
 # `+pc unicode` only >=R16
-# ERL_CRASH_DUMP=/dev/null erl -noshell -s $IN_MOD main -s erlang halt
+# ERL_CRASH_DUMP=/dev/null erl -noshell -s $MODULE main -s erlang halt
 ERL_CRASH_DUMP=/dev/null \
-    erl -noshell -eval "try $IN_MOD:main() catch T:R -> io:format(standard_error, \"~p(~p)~n~p\", [T, R, erlang:get_stacktrace()]) end, erlang:halt()."
+    erl -noshell -eval "try '$MODULE':main() catch T:R -> io:format(standard_error, \"~p(~p)~n~p\", [T, R, erlang:get_stacktrace()]) end, erlang:halt()."

@@ -80,12 +80,15 @@ from_json(Req, State) ->
 
 handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release">> := Release}) ->
     {ok, Releases} = application:get_env(eplaypen, releases),
-    case lists:member(Release, Releases) of
-        true ->
+    case {lists:member(Release, Releases), find_module_name(SourceCode)} of
+        {true, {ok, Mod}} ->
             Script = filename:join([code:priv_dir(eplaypen), "scripts", "evaluate.sh"]),
-            run(Req, State, [Script, Release, integer_to_binary(iolist_size(SourceCode))], SourceCode);
-        false ->
+            run(Req, State, [Script, Mod, Release, integer_to_binary(iolist_size(SourceCode))], SourceCode);
+        {false, _} ->
             {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Unknown release ~p", [Release]), Req),
+            {ok, Req2, State};
+        {_, error} ->
+            {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State}
     end;
 handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release,
@@ -98,11 +101,16 @@ handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release"
                <<"dis">>,  % compile:forms(.., []), erts_debug:df(..) | erlc mod.erl && erl -eval 'erts_debug:df(mod).'
                <<"core">>],% compile:forms(.., [to_core])             | erlc +to_core mod.erl
     {ok, Releases} = application:get_env(eplaypen, releases),
-    case {lists:member(Output, Formats), lists:member(Release, Releases)} of
-        {true, true} ->
+    case {lists:member(Output, Formats),
+          lists:member(Release, Releases),
+          find_module_name(SourceCode)} of
+        {true, true, {ok, Mod}} ->
             Script = filename:join([code:priv_dir(eplaypen), "scripts", "compile.sh"]),
-            run(Req, State, [Script, Release, integer_to_binary(iolist_size(SourceCode)), Output], SourceCode);
-        {_, _} ->
+            run(Req, State, [Script, Mod, Release, integer_to_binary(iolist_size(SourceCode)), Output], SourceCode);
+        {_, _, error} ->
+            {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
+            {ok, Req2, State};
+        {_, _, _} ->
             %% Invalid output format ~p or release ~p.
             {ok, Req2} = cowboy_req:reply(
                            400, [],
@@ -175,3 +183,23 @@ timeout_frame(binary) ->
     <<4>>;
 timeout_frame(text) ->
     <<"\n------\nTimeout">>.
+
+
+find_module_name(Body) ->
+    %% May use `erl_scan:string/1', but this requires `binary_to_string'
+    %% for sources.
+    %% " \t - \t \n module \n ( \n\r my_mod09 \n ) \n. "
+    %% "-module(m)."
+    %% "-module(mY_MOD09)."
+    %% "-module('!@#$%')."
+    %% "-'module'(m).
+    %% Don't allow $/, $" and $. in name (used in FS path).
+    Rule = <<"\\s*-\\s*'?module'?\\s*\\(\\s*(([a-z][0-9a-z_A-Z]*)|'([^'/.\"]+)')\\s*\\)\\s*\\.">>,
+    case re:run(Body, Rule, [multiline, {capture, [2, 3], binary}]) of
+        {match, [<<>>, Mod]} ->
+            {ok, Mod};
+        {match, [Mod, <<>>]} ->
+            {ok, Mod};
+        nomatch ->
+            error
+    end.
