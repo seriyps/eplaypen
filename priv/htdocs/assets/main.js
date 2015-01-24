@@ -1,11 +1,10 @@
 /* *
- * (C) Sergey Prokhorov <me@seriyps.ru>
+ * (c) Sergey Prokhorov <me@seriyps.ru>
  *
  */
 
-
-"use strict";
 $(function(){
+    "use strict";
 
     function Output(selector) {
         var self = this;
@@ -172,7 +171,9 @@ $(function(){
                 output.addStdout(data);
             }).fail(function(jqXHR, textStatus) {
                 output.reset();
-                output.reportTransportError(jqXHR.status, textStatus);
+                output.reportTransportError(
+                    jqXHR.status,
+                    textStatus + ".\n" + jqXHR.responseText);
             })
         }
         this.evaluate = function(code, release) {
@@ -198,7 +199,9 @@ $(function(){
                 output.reset();
                 output.addStdout(data);
             }).fail(function(jqXHR, textStatus) {
-                output.reportTransportError(jqXHR.status, textStatus);
+                output.reportTransportError(
+                    jqXHR.status,
+                    textStatus + ".\n" + jqXHR.responseText);
             })
         }
     }
