@@ -82,7 +82,7 @@ handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release
     {ok, Releases} = application:get_env(eplaypen, releases),
     case {lists:member(Release, Releases), find_module_name(SourceCode)} of
         {true, {ok, Mod}} ->
-            Script = filename:join([code:priv_dir(eplaypen), "scripts", "evaluate.sh"]),
+            Script = filename:join([filename:absname(code:priv_dir(eplaypen)), "scripts", "evaluate.sh"]),
             run(Req, State, [Script, Mod, Release, integer_to_binary(iolist_size(SourceCode))], SourceCode);
         {false, _} ->
             {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Unknown release ~p", [Release]), Req),
@@ -105,7 +105,7 @@ handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release"
           lists:member(Release, Releases),
           find_module_name(SourceCode)} of
         {true, true, {ok, Mod}} ->
-            Script = filename:join([code:priv_dir(eplaypen), "scripts", "compile.sh"]),
+            Script = filename:join([filename:absname(code:priv_dir(eplaypen)), "scripts", "compile.sh"]),
             run(Req, State, [Script, Mod, Release, integer_to_binary(iolist_size(SourceCode)), Output], SourceCode);
         {_, _, error} ->
             {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
@@ -138,8 +138,8 @@ run(Req, State, Argv, SourceCode) ->
                        Req2
                end,
 
-    AppRoot = code:lib_dir(eplaypen),
-    PrivDir = code:priv_dir(eplaypen),
+    AppRoot = filename:absname(code:lib_dir(eplaypen)),
+    PrivDir = filename:absname(code:priv_dir(eplaypen)),
     PPExe = filename:join([AppRoot, "bin", "playpen"]),
     PPRoot = filename:join([PrivDir, "pp-root"]),
     BindMount = [
@@ -147,6 +147,7 @@ run(Req, State, Argv, SourceCode) ->
                  filename:join(PrivDir, "scripts")
                 ],
     PPOpts = #{root => PPRoot,
+               sudo => true,
                executable => PPExe,
                timeout => 15,
                memory_limit => 64,

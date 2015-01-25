@@ -29,7 +29,7 @@ make_playpen() {
         git clone https://github.com/thestinger/playpen
     fi
     cd $BASE_DIR/playpen
-    git checkout $PP_COMMIT
+    git checkout $PP_COMMIT .
     git apply $APP_ROOT/priv/disable_strict_syscalls_$PP_COMMIT.patch
     make
     # install playpen exe as 'eplaypen/bin/playpen'
@@ -52,8 +52,9 @@ make_playpen_workdir() {
     #   --devices=/dev/urandom:r,/dev/null:w --mount-proc --mount-dev --hostname pp \
     #   --timeout=15 --memory-limit=50 -- <...>
 
-    # sudo rm -rf $PP_WORKDIR
-    # mkdir $PP_WORKDIR
+    sudo rm -rf $PP_WORKDIR
+    mkdir $PP_WORKDIR
+
     sudo pacstrap -c -d $PP_WORKDIR \
         bash \
         coreutils \
@@ -76,10 +77,12 @@ make_playpen_workdir() {
 }
 
 make_etc() {
-    # XXX: ensure /etc/nginx/nginx.conf includes /etc/nginx/sites-enabled/
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "Ensure your /etc/nginx.conf has 'include /etc/nginx/sites-enabled/*;'"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!"
     d=`pwd`
-    cd etc
-    sudo find etc -type f -exec install -o root -g root -m 664 -D {} ../wasd/{} \;
+    cd $APP_ROOT/priv
+    sudo find etc -type f -print -exec install -o root -g root -m 664 -D {} /{} \;
     cd $d
 }
 
@@ -90,7 +93,18 @@ make_all() {
     $0 playpen
     $0 playpen_workdir
     $0 erlang_releases
+    $0 start
 }
 
-# usage build.sh {deps|playpen|erlang_releases|playpen_workdir|etc}
+make_start() {
+    cd $APP_ROOT
+    rebar get-deps compile
+    erl -pa deps/*/ebin -pa ../eplaypen/ebin -sname eplaypen -detached -s playpen start
+}
+
+make_remsh() {
+    erl -sname eplaypen_console_$RANDOM -remsh eplaypen@eplaypen
+}
+
+# usage build.sh {deps|playpen|erlang_releases|playpen_workdir|etc|start|remsh}
 make_$1

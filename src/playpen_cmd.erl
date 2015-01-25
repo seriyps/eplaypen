@@ -13,6 +13,7 @@
 
 -type playpen_opts() ::
         #{executable => file:filename(),
+          sudo => boolean(),
           root => file:filename(),              % required
           mount_proc => boolean(),
           mount_dev => boolean(),
@@ -45,7 +46,7 @@
       CallbackState :: term().
 cmd([_Callable | _Argv] = Cmd, Stdin, PPOpts, IOOpts) ->
     [Callable1 | Argv1] = build_playpen_argv(Cmd, PPOpts),
-    lager:debug("<~p> | ~p ~p", [iolist_size(Stdin), Callable1, Argv1]),
+    lager:info("<~p> | ~p ~p", [iolist_size(Stdin), Callable1, Argv1]),
     Port = erlang:open_port(
              {spawn_executable, Callable1},
              [{args, Argv1},
@@ -71,9 +72,15 @@ build_playpen_argv(Cmd, #{root := Root} = Opts) ->
                          os:find_executable("playpen")
                  end,
     Cmd1 = [Root, "--" | Cmd],
-    PPOpts = maps:without([executable, root], Opts),
+    PPOpts = maps:without([executable, root, sudo], Opts),
     Cmd2 = add_playpen_opts(Cmd1, maps:to_list(PPOpts)),
-    [Executable | Cmd2].
+    case maps:find(sudo, Opts) of
+        {ok, true} ->
+            Sudo = os:find_executable("sudo"),
+            [Sudo, Executable | Cmd2];
+        _ ->
+            [Executable | Cmd2]
+    end.
     %% Cmd.
 
 add_playpen_opts(Cmd, []) ->
@@ -83,12 +90,14 @@ add_playpen_opts(Cmd, [{mount_proc, true} | Opts]) ->
 add_playpen_opts(Cmd, [{mount_dev, true} | Opts]) ->
     ["--mount-dev" | add_playpen_opts(Cmd, Opts)];
 add_playpen_opts(Cmd, [{bind, V} | Opts]) ->
-    Flags = ["-b" || _ <- V],
-    WithFlags = lists:zip(Flags, V),
+    WithFlags = lists:foldl(fun(Dir, Acc) ->
+                                    ["-b", Dir | Acc]
+                            end, [], V),
     WithFlags ++ add_playpen_opts(Cmd, Opts);
 add_playpen_opts(Cmd, [{bind_rw, V} | Opts]) ->
-    Flags = ["-B" || _ <- V],
-    WithFlags = lists:zip(Flags, V),
+    WithFlags = lists:foldl(fun(Dir, Acc) ->
+                                    ["-B", Dir | Acc]
+                            end, [], V),
     WithFlags ++ add_playpen_opts(Cmd, Opts);
 add_playpen_opts(Cmd, [{user, V} | Opts]) ->
     ["--user", V | add_playpen_opts(Cmd, Opts)];
