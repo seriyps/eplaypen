@@ -43,7 +43,7 @@ case $OUTPUT_FORMAT in
         
     dis)
         erlc -Wall $IN_FILE
-        erl -noshell -eval "erts_debug:df('${IN_MOD}'), erlang:halt(0)."
+        erl -noshell -eval "erts_debug:df('${MODULE}'), erlang:halt(0)."
         cat "${MODULE}.dis"
         ;;
 esac
