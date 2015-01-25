@@ -79,11 +79,14 @@ make_playpen_workdir() {
 make_etc() {
     echo "!!!!!!!!!!!!!!!!!!!!!!!!"
     echo "Ensure your /etc/nginx.conf has 'include /etc/nginx/sites-enabled/*;'"
+    echo "Ensure '/etc/nginx/sites-enabled/tryerl.seriyps.ru.conf' has correct 'root'"
     echo "!!!!!!!!!!!!!!!!!!!!!!!!"
     d=`pwd`
     cd $APP_ROOT/priv
     sudo find etc -type f -print -exec install -o root -g root -m 664 -D {} /{} \;
     cd $d
+    # make $HOME/eplaypen/priv/htdocs/ accessible for Nginx
+    sudo chmod a+rx $HOME
 }
 
 make_all() {
