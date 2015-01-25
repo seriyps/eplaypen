@@ -1,0 +1,30 @@
+diff --git a/playpen.c b/playpen.c
+index 0018c9e..a4c02c3 100644
+--- a/playpen.c
++++ b/playpen.c
+@@ -329,6 +329,7 @@ static void handle_signal(int sig_fd, GDBusConnection *connection, const char *u
+              si.ssi_status, strsignal(si.ssi_status));
+     case CLD_TRAPPED:
+         do_trace(&si, trace_init, learn);
++        break;
+     case CLD_STOPPED:
+     default:
+         break;
+@@ -432,7 +433,7 @@ int main(int argc, char **argv) {
+     const char *root = argv[optind];
+     optind++;
+ 
+-    scmp_filter_ctx ctx = seccomp_init(learn_name ? SCMP_ACT_TRACE(0) : SCMP_ACT_KILL);
++    scmp_filter_ctx ctx = seccomp_init(learn_name ? SCMP_ACT_TRACE(0) : SCMP_ACT_ALLOW/*KILL*/);
+     if (!ctx) errx(EXIT_FAILURE, "seccomp_init");
+ 
+     if (syscalls_file) {
+@@ -447,7 +448,7 @@ int main(int argc, char **argv) {
+         fclose(file);
+     }
+ 
+-    check(seccomp_rule_add(ctx, SCMP_ACT_ALLOW, __NR_execve, 0));
++    //check(seccomp_rule_add(ctx, SCMP_ACT_ALLOW, __NR_execve, 0));
+ 
+     if (syscalls) {
+         for (char *s_ptr = syscalls, *saveptr; ; s_ptr = NULL) {

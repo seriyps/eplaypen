@@ -1,6 +1,9 @@
-erl_crash.dump
-*.ebin
 ebin/
 deps/
-priv/erl_installations
+log/
 .rebar/
+priv/erl_installations
+priv/pp-root
+bin/playpen
+erl_crash.dump
+*.ebin

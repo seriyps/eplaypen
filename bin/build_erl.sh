@@ -16,6 +16,11 @@ for release in $RELEASES; do
         echo Making ${release}...
         $KERL build $release $release
         $KERL install $release $INST_PATH
+
+        # for some reason, inet_gethost behaves badly under playpen,
+        # so we just drop it
+        mv $INST_PATH/erts-*/bin/inet_gethost{,.bak}
+        echo "#!/bin/bash\ncat" > $INST_PATH/erts-*/bin/inet_gethost
         # $KERL delete build $RELEASE
         # install_extra_libs
     fi

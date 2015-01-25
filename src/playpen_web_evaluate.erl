@@ -137,12 +137,24 @@ run(Req, State, Argv, SourceCode) ->
                        ok = cowboy_req:chunk(output_frame(Chunk, OutForm), Req2),
                        Req2
                end,
-    PPExe = filename:join([code:lib_dir(eplaypen), "bin", "playpen"]),
-    PPOpts = #{root => "/tmp",
+
+    AppRoot = code:lib_dir(eplaypen),
+    PrivDir = code:priv_dir(eplaypen),
+    PPExe = filename:join([AppRoot, "bin", "playpen"]),
+    PPRoot = filename:join([PrivDir, "pp-root"]),
+    BindMount = [
+                 filename:join(PrivDir, "erl_installations"),
+                 filename:join(PrivDir, "scripts")
+                ],
+    PPOpts = #{root => PPRoot,
                executable => PPExe,
-               timeout => 10,
+               timeout => 15,
                memory_limit => 64,
                mount_proc => true,
+               mount_dev => true,
+               user => "eplaypen",
+               bind => BindMount,
+               hostname => "pp",
                devices => [{"/dev/urandom", [r]}, {"/dev/null", [w]}]},
     IOOpts = #{max_output_size => 512 * 1024,
                collect_output => false,
