@@ -15,7 +15,8 @@ $(function(){
         function maybeScroll() {
             if (!self.autoscroll) return;
             var b = document.body;
-            $(b).scrollTop(b.scrollHeight);
+            var scrollPos = $el.offset().top + $el.height() - $(window).height();
+            $(window).scrollTop(scrollPos + 30);
         }
 
         this.reset = function() {
