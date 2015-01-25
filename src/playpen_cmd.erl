@@ -71,7 +71,8 @@ build_playpen_argv(Cmd, #{root := Root} = Opts) ->
                          os:find_executable("playpen")
                  end,
     Cmd1 = [Root, "--" | Cmd],
-    Cmd2 = add_playpen_opts(Cmd1, maps:to_list(Opts)),
+    PPOpts = maps:without([executable, root], Opts),
+    Cmd2 = add_playpen_opts(Cmd1, maps:to_list(PPOpts)),
     [Executable | Cmd2].
     %% Cmd.
 
@@ -110,7 +111,7 @@ add_playpen_opts(Cmd, [{syscalls, V} | Opts]) ->
     ["--syscalls", Csv | add_playpen_opts(Cmd, Opts)];
 add_playpen_opts(Cmd, [{syscalls_file, V} | Opts]) ->
     ["--syscalls-file", V | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{_, _} | Opts]) ->
+add_playpen_opts(Cmd, [{K, false} | Opts]) when (K == mount_proc) orelse (K == mount_dev) ->
     add_playpen_opts(Cmd, Opts).
 
 
