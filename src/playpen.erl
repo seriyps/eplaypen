@@ -15,9 +15,11 @@ start() ->
     application:set_env(?APP, releases, Releases),
     Port = 8080,
     Ip = {127, 0, 0, 1},
+    Concurrency = 10,
 	Dispatch = cowboy_router:compile(cowboy_routes()),
-	{ok, _} = cowboy:start_http(http, 100, [{port, Port}, {ip, Ip}],
+	{ok, _} = cowboy:start_http(http, Concurrency, [{port, Port}, {ip, Ip}],
                                 [{env, [{dispatch, Dispatch}]}]),
+    ranch:set_max_connections(http, Concurrency),
     ok.
 
 %% Internals
