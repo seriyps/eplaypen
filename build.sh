@@ -8,11 +8,16 @@ PP_WORKDIR=$APP_ROOT/priv/pp-root
 PP_USER=eplaypen
 PP_COMMIT=8537989e9df484dcac
 
+DB_USER=eplaypen
+DB_NAME=eplaypen
+
 make_deps() {
     sudo pacman -S \
         erlang-nox \
         rebar \
-        arch-install-scripts
+        arch-install-scripts \
+        nginx \
+        postgresql
 
     if [ ! -x $KERL ]; then
         curl -O https://raw.githubusercontent.com/spawngrid/kerl/master/kerl
@@ -77,22 +82,43 @@ make_playpen_workdir() {
 }
 
 make_etc() {
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!"
-    echo "Ensure your /etc/nginx.conf has 'include /etc/nginx/sites-enabled/*;'"
-    echo "Ensure '/etc/nginx/sites-enabled/tryerl.seriyps.ru.conf' has correct 'root'"
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!"
     d=`pwd`
     cd $APP_ROOT/priv
     sudo find etc -type f -print -exec install -o root -g root -m 664 -D {} /{} \;
     cd $d
     # make $HOME/eplaypen/priv/htdocs/ accessible for Nginx
     sudo chmod a+rx $HOME
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "Ensure your /etc/nginx.conf has 'include /etc/nginx/sites-enabled/*;'"
+    echo "Ensure '/etc/nginx/sites-enabled/tryerl.seriyps.ru.conf' has correct 'root'"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!"
+    read -n 1 -b "Press any key to edit nginx.conf"
+    nano /etc/nginx/nginx.conf
+    sudo systemctl start nginx
+}
+
+make_db() {
+    HAS_LOCALE=$(locale -a | grep -i "en_us.utf8" || true)
+    if [ -z "$HAS_LOCALE" ]; then
+        sudo sh -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen"
+        sudo locale-gen
+    fi
+    sudo -u postgres initdb --pwprompt --auth=peer --auth-host=md5 --auth-local=peer \
+        --locale en_US.UTF-8 -E UTF8 -D '/var/lib/postgres/data'
+    sudo systemctl start postgresql
+    echo "!!! Don't forget to add new DB user password to sys.config"
+    sudo -u postgres createuser --pwprompt $DB_USER
+    sudo -u postgres createdb -O $DB_USER $DB_NAME
+    sudo -u postgres psql $DB_NAME < $APP_ROOT/priv/db_schema.sql
+    # reserve first 1024 ID's for internal needs, say, examples?
+    sudo -u postgres psql $DB_NAME -c "SELECT setval('pastebin_id_seq', 1024);"
 }
 
 make_all() {
     set -x
     $0 deps
     $0 etc
+    $0 db
     $0 playpen
     $0 playpen_workdir
     $0 erlang_releases
@@ -102,7 +128,7 @@ make_all() {
 make_start() {
     cd $APP_ROOT
     rebar get-deps compile
-    erl -pa deps/*/ebin -pa ../eplaypen/ebin -sname eplaypen -detached -s playpen start
+    erl -sname eplaypen -detached -pa deps/*/ebin -pa ../eplaypen/ebin -config sys -s playpen start
 }
 
 make_remsh() {

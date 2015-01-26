@@ -2,11 +2,8 @@
 {application, eplaypen,
  [
   {description, "An Erlang playpen"},
-  {vsn, "0.0.1"},
-  %% {modules, [
-  %%            playpen
-  %%           ]},
-  {registered, []},
+  {vsn, "0.0.2"},
+  {registered, [eplaypen_db]},
   {applications, [
                   kernel,
                   stdlib,
@@ -14,5 +11,6 @@
                   crypto,
                   cowboy
                  ]},
+  {mod, {playpen, []}},
   {env, []}
  ]}.

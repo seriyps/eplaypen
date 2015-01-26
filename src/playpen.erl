@@ -1,10 +1,20 @@
+%%% @author Sergey Prokhorov <me@seriyps.ru>
+%%% @copyright (C) 2015, Sergey Prokhorov
+%%% @doc
+%%%
+%%% @end
+%%% Created : 26 Jan 2015 by Sergey Prokhorov <me@seriyps.ru>
+
 -module(playpen).
+-behaviour(application).
 
-%% playpen: playpen library's entry point.
-
--export([start/0]).
+-export([start/0, cowboy_reload_routes/0]).
+-export([available_outputs/0, available_releases/0]).
+%% Application callbacks
+-export([start/2, stop/1]).
 
 -define(APP, eplaypen).
+
 
 %% API
 
@@ -22,6 +32,31 @@ start() ->
     ranch:set_max_connections(http, Concurrency),
     ok.
 
+cowboy_reload_routes() ->
+    Dispatch = cowboy_routes(),
+    cowboy:set_env(http, dispatch, cowboy_router:compile(Dispatch)).
+
+%% some info
+available_outputs() ->
+    [<<"beam">>, % erl_lint                                 | erlc mod.erl
+     <<"P">>,    % compile:forms(.., ['P'])                 | erlc -P mod.erl
+     <<"E">>,    % compile:forms(.., ['E'])                 | erlc -E mod.erl
+     <<"S">>,    % compile:forms(.., ['S'])                 | erlc -S mod.erl
+     <<"dis">>,  % compile:forms(.., []), erts_debug:df(..) | erlc mod.erl && erl -eval 'erts_debug:df(mod).'
+     <<"core">>].% compile:forms(.., [to_core])             | erlc +to_core mod.erl
+
+available_releases() ->
+    {ok, Releases} = application:get_env(?APP, releases),
+    Releases.
+
+
+%% applicaion callback
+start(_, _) ->
+    playpen_sup:start_link().
+
+stop(_) ->
+    ok.
+
 %% Internals
 
 read_releases() ->
@@ -35,7 +70,7 @@ cowboy_routes() ->
       [
        {"/api/evaluate", playpen_web_evaluate, [evaluate]},
        {"/api/compile", playpen_web_evaluate, [compile]},
-       {"/api/pastebin", playpen_web_pastebin, []},
+       {"/api/pastebin/[:paste_id]", playpen_web_pastebin, []},
        %% this 2 is for development, on prod Nginx should be used
        {"/", cowboy_static, {priv_file, ?APP, "htdocs/index.html"}},
        {"/assets/[...]", cowboy_static, {priv_dir, ?APP, "htdocs/assets"}}

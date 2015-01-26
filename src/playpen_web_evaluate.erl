@@ -79,7 +79,7 @@ from_json(Req, State) ->
     end.
 
 handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release">> := Release}) ->
-    {ok, Releases} = application:get_env(eplaypen, releases),
+    Releases = eplaypen:available_releases(),
     case {lists:member(Release, Releases), find_module_name(SourceCode)} of
         {true, {ok, Mod}} ->
             Script = filename:join([filename:absname(code:priv_dir(eplaypen)), "scripts", "evaluate.sh"]),
@@ -93,14 +93,8 @@ handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release
     end;
 handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release,
                                            <<"output_format">> := Output}) ->
-    %% beam is erl_lint
-    Formats = [<<"beam">>, % erl_lint                                 | erlc mod.erl
-               <<"P">>,    % compile:forms(.., ['P'])                 | erlc -P mod.erl
-               <<"E">>,    % compile:forms(.., ['E'])                 | erlc -E mod.erl
-               <<"S">>,    % compile:forms(.., ['S'])                 | erlc -S mod.erl
-               <<"dis">>,  % compile:forms(.., []), erts_debug:df(..) | erlc mod.erl && erl -eval 'erts_debug:df(mod).'
-               <<"core">>],% compile:forms(.., [to_core])             | erlc +to_core mod.erl
-    {ok, Releases} = application:get_env(eplaypen, releases),
+    Formats = eplaypen:available_outputs(),
+    Releases = eplaypen:available_releases(),
     case {lists:member(Output, Formats),
           lists:member(Release, Releases),
           find_module_name(SourceCode)} of
