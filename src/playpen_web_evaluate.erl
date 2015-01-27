@@ -79,7 +79,7 @@ from_json(Req, State) ->
     end.
 
 handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release">> := Release}) ->
-    Releases = eplaypen:available_releases(),
+    Releases = playpen:available_releases(),
     case {lists:member(Release, Releases), find_module_name(SourceCode)} of
         {true, {ok, Mod}} ->
             Script = filename:join([filename:absname(code:priv_dir(eplaypen)), "scripts", "evaluate.sh"]),
@@ -93,8 +93,8 @@ handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release
     end;
 handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release,
                                            <<"output_format">> := Output}) ->
-    Formats = eplaypen:available_outputs(),
-    Releases = eplaypen:available_releases(),
+    Formats = playpen:available_outputs(),
+    Releases = playpen:available_releases(),
     case {lists:member(Output, Formats),
           lists:member(Release, Releases),
           find_module_name(SourceCode)} of
