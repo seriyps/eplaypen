@@ -7,7 +7,7 @@ RELEASE=$2
 INPUT_SIZE=$3
 OUTPUT_FORMAT=$4
 
-WORKDIR=/tmp
+WORKDIR=~
 APP_ROOT=$(realpath $(dirname $0)/../..)
 ERL_RELEASES_PATH=$APP_ROOT/priv/erl_installations
 
