@@ -65,7 +65,7 @@ $(function(){
         }
     }
 
-    function Controls(editor, editorSession, transport, output, pastebin) {
+    function Controls(transport, output, pastebin) {
         // UI operations
         var self = this;
         var $evaluate = $("#evaluate"),
@@ -80,15 +80,24 @@ $(function(){
         this.$buttons = $buttons;
         this.$switches = $([$emit[0], $release[0], $keyboard[0], $autoscroll[0]]);
 
-        output.autoscroll = $autoscroll.prop("checked");
+        // editor
+        this.editor = ace.edit("editor");
+        this.editorSession =  this.editor.getSession();
 
+        this.editor.setTheme("ace/theme/github");
+        this.editorSession.setMode("ace/mode/erlang");
+        this.editor.focus();
+        // var nLines = this.EditorSession.getLength();
+        // this.editor.gotoLine(nLines, this.editorSession.getLine(nLines - 1).length);
+
+        // serialize
         this.serialize = function() {
             return {
                 emit: $emit.val(),
                 release: $release.val(),
                 keyboard: $keyboard.val(),
                 autoscroll: $autoscroll.prop("checked"),
-                code: editorSession.getValue()
+                code: self.editorSession.getValue()
             }
         }
         this.deserialize = function(obj) {
@@ -112,12 +121,13 @@ $(function(){
                     $autoscroll.prop("checked", v).trigger("change")
                     break
                     case "code":
-                    editorSession.setValue(v)
+                    self.editorSession.setValue(v)
                     break
                 }
             })
         }
 
+        // compile/evaluate
         var progress = false;
         this.evaluate = function() {
             if (progress) {
@@ -128,7 +138,7 @@ $(function(){
             $buttons.prop("disabled", true);
 
             transport
-                .evaluate(editorSession.getValue(), $release.val())
+                .evaluate(self.editorSession.getValue(), $release.val())
                 .always(function() {
                     progress = false;
                     $buttons.prop("disabled", false);
@@ -145,7 +155,7 @@ $(function(){
             $buttons.prop("disabled", true);
 
             transport
-                .compile(editorSession.getValue(), $release.val(), $emit.val())
+                .compile(self.editorSession.getValue(), $release.val(), $emit.val())
                 .always(function() {
                     progress = false;
                     $buttons.prop("disabled", false);
@@ -153,6 +163,7 @@ $(function(){
         };
         $compile.on('click', this.compile);
 
+        // share
         $share.on('click', function() {
             $share.prop("disabled", true); // enabled in resetShare to avoid duplicates
             var state = self.serialize();
@@ -164,38 +175,50 @@ $(function(){
                     var hash = '#id=' + id;
                     var shareUrl = origin + "/" + hash;
                     document.location.hash = hash;
-                    var $a = $("<a/>", {href: shareUrl,
-                                    text: shareUrl});
+                    var $a = $("<a/>",
+                               {href: shareUrl,
+                                text: shareUrl,
+                                target: "_blank"});
                     $sharePanel.append($a).show();
                 }).fail(function(jqXHR, textStatus) {
                     $sharePanel.text("Error #" + jqXHR.status + ". " + textStatus + ". " + jqXHR.responseText)
                     .show();
                 })
         });
-
+        this.lockUrl = false;
         function resetShare() {
             $share.prop("disabled", false);
             $sharePanel
                 .hide()
                 .empty();
-            document.location.hash = "";
+            if (!self.lockUrl && document.location.hash) { // see Pickle
+                history.pushState(
+                    '', document.title,
+                    window.location.pathname + window.location.search);
+            }
         }
-        editorSession.on("change", resetShare);
+        this.editorSession.on("change", resetShare);
         this.$switches.on('change', resetShare);
 
+
+        // kb layout
         $keyboard.on('change', function() {
-            editor.setKeyboardHandler($keyboard.val() || null);
+            self.editor.setKeyboardHandler($keyboard.val() || null);
         })
+
+        // autoscroll
+        output.autoscroll = $autoscroll.prop("checked");
         $autoscroll.on('change', function() {
             output.autoscroll = $autoscroll.prop("checked");
         })
 
-        editor.commands.addCommand({
+        // shortcuts
+        this.editor.commands.addCommand({
             name: "evaluate",
             exec: this.evaluate,
             bindKey: {win: "Ctrl-Enter", mac: "Ctrl-Enter"}
         });
-        editor.commands.addCommand({
+        this.editor.commands.addCommand({
             name: "compile",
             exec: this.compile,
             bindKey: {win: "Ctrl-Shift-Enter", mac: "Ctrl-Shift-Enter"}
@@ -211,9 +234,6 @@ $(function(){
             clearTimeout(timer);
             timer = setTimeout(function() {$spinner.show()}, 1000);
         }).ajaxComplete(function() {
-            clearTimeout(timer);
-            $spinner.hide()
-        }).ajaxError(function() {
             clearTimeout(timer);
             $spinner.hide()
         })
@@ -271,7 +291,7 @@ $(function(){
     }
     function ByteProtocol() {}  // TODO: Accept: octet/stream
 
-    function Pickler(editorSession, control, pastebin) {
+    function Pickler(control, pastebin) {
         // restore controls and editor state from localstore or URL hash
         var qs = (function() {
             if (!document.location.hash) return {};
@@ -297,16 +317,20 @@ $(function(){
             }
             return parseQS(qs);
         })();
-        console.log(qs, "id" in qs);
+
         if ("id" in qs) {
+            control.lockUrl = true;
             pastebin.get(qs.id)
                 .done(function(o) {
                     control.deserialize(o);
+                    control.lockUrl = false;
                 }).fail(function(jqXHR) {
+                    control.lockUrl = false;
                     alert("Can't restore snippet. Error #" + jqXHR.status + ". " + jqXHR.responseText);
                 });
             return              // don't try other pickle methods
         }
+
         (function() {
             // from local storage
             var switches = localStorage.getItem("switches");
@@ -319,15 +343,15 @@ $(function(){
         })();
 
         (function() {
-            // from hash
+            // from URL hash
             control.deserialize(qs);
 
             if ("do_evaluate" in qs) control.evaluate();
             else if ("do_compile" in qs) control.compile();
         })();
 
-        editorSession.on("change", function() {
-            localStorage.setItem("code", editorSession.getValue());
+        control.editorSession.on("change", function() {
+            localStorage.setItem("code", control.editorSession.getValue());
         });
         control.$switches.on('change', function() {
             var state = control.serialize()
@@ -371,18 +395,9 @@ $(function(){
         };
     }
 
-    var editor = ace.edit("editor");
-    var session = editor.getSession();
-
-    editor.setTheme("ace/theme/github");
-    session.setMode("ace/mode/erlang");
-    editor.focus();
-    // var nLines = session.getLength();
-    // editor.gotoLine(nLines, session.getLine(nLines - 1).length);
-
     var output = new Output("#result");
     var transport = new TextTransport(output);
     var pastebin = new Pastebin();
-    var control = new Controls(editor, session, transport, output, pastebin);
-    var pickler = new Pickler(session, control, pastebin);
+    var control = new Controls(transport, output, pastebin);
+    var pickler = new Pickler(control, pastebin);
 })
