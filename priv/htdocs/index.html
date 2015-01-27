@@ -2,19 +2,28 @@
 <html lang="en">
     <head>
         <meta charset="utf-8"/>
-        <title>Erlang playpen</title>
+        <title>Erlang web playpen</title>
+
         <link rel="stylesheet" href="/assets/main.css"/>
         <script src="//code.jquery.com/jquery-2.1.3.min.js" charset="utf-8"></script>
         <script src="//cdn.jsdelivr.net/ace/1.1.8/min/ace.js" charset="utf-8"></script>
         <script src="/assets/main.js" charset="utf-8"></script>
+
         <meta  name=description content="Online erlang compiler and evaluator. Run any erlang program in your browser." />
         <meta name="keywords" content="erlang, compiler, disassembler, preprocessor, evaluator, playpen, sandbox, playground"/>
+
+        <meta property="og:title" content="Online Erlang playpen"/>
+        <meta property="og:type" content="website"/>
+        <!-- <meta property="og:image" content="http://tryerl.seriyps.ru/assets/icon80x80.png"/> -->
+        <meta property="og:url" content="http://tryerl.seriyps.ru/"/>
+
+        <link rel="canonical" href="/"/>
     </head>
     <body>
         <div id="control">
             <button id="evaluate" title="Ctrl + Enter">evaluate</button>
             <button id="compile" title="Ctrl + Shift + Enter">compile to:</button>
-            <select id="emit" title="Compile to...">
+            <select id="emit" title="Compile target">
                 <option value="beam">just check for errors</option>
                 <option value="core">core erlang (.core)</option>
                 <option value="S">erlang assembler (.S)</option>
@@ -32,18 +41,18 @@
                 <option value="ace/keyboard/emacs">Emacs</option>
                 <option value="ace/keyboard/vim">Vim</option>
             </select>
-            <label>
+            <label title="scroll following program output">
                 <input type="checkbox" id="autoscroll"/>
                 Scroll output
             </label>
-            <button id="share">share</button>
+            <button id="share" title="Save snippet and share with others">share</button>
             <div id="transport-spinner" class="spinner" style="display: none;">
                 <div class="bounce1"></div>
                 <div class="bounce2"></div>
                 <div class="bounce3"></div>
             </div>
         </div>
-        <div id="share-panel" style="display: block;"></div>
+        <div id="share-panel" style="display: none;"></div>
         <div id="editor">% -*- coding: utf8 -*-
 -module(main).
 -export([main/0]).
@@ -52,5 +61,6 @@ main() ->
     io:format("Hello, world~n!").</div>
         <pre id="result"></pre>
     </body>
+    <!-- Author: Sergey Prokhorov <me (at) seriyps.ru> -->
     <!-- inspired by http://play.rust-lang.org/  -->
 </html>
