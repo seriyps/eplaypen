@@ -13,15 +13,14 @@
     <body>
         <div id="control">
             <button id="evaluate" title="Ctrl + Enter">evaluate</button>
-            <button id="compile" title="Ctrl + Shift + Enter">compile</button>
-            <!-- <button id="share">share</button> -->
+            <button id="compile" title="Ctrl + Shift + Enter">compile to:</button>
             <select id="emit" title="Compile to...">
-                <option value="beam">Check for errors</option>
-                <option value="core">Core erlang (.core)</option>
-                <option value="S">Erlang assembler (.S)</option>
-                <option value="dis">Beam VM assembler (.dis)</option>
-                <option value="P">Preprocessed (.P)</option>
-                <option value="E">Expanded (.E)</option>
+                <option value="beam">just check for errors</option>
+                <option value="core">core erlang (.core)</option>
+                <option value="S">erlang assembler (.S)</option>
+                <option value="dis">beam VM assembler (.dis)</option>
+                <option value="P">preprocessed (.P)</option>
+                <option value="E">expanded (.E)</option>
             </select>
             <select id="release" title="Erlang release">
                 <option>17.4</option>
@@ -37,17 +36,20 @@
                 <input type="checkbox" id="autoscroll"/>
                 Scroll output
             </label>
+            <button id="share">share</button>
             <div id="transport-spinner" class="spinner" style="display: none;">
                 <div class="bounce1"></div>
                 <div class="bounce2"></div>
                 <div class="bounce3"></div>
             </div>
         </div>
-        <div id="editor">-module(main).
+        <div id="share-panel" style="display: block;"></div>
+        <div id="editor">% -*- coding: utf8 -*-
+-module(main).
 -export([main/0]).
 
 main() ->
-    io:format("Hello, world!").</div>
+    io:format("Hello, world~n!").</div>
         <pre id="result"></pre>
     </body>
     <!-- inspired by http://play.rust-lang.org/  -->

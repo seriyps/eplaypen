@@ -40,6 +40,18 @@ body, #control {
     display: inline-block;
 }
 
+#share-panel {
+    border-radius: 5px;
+    border: 3px solid #ccc;
+    padding: 10px;
+    margin: 3px;
+}
+
+#share, #release, #compile {
+    margin-left: 15px;
+}
+
+
 /* http://tobiasahlin.com/spinkit/ */
 .spinner {
   /* margin: 30px auto 0; */

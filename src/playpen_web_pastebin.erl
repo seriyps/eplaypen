@@ -36,8 +36,8 @@ allowed_methods(Req, State) ->
     {[<<"GET">>, <<"POST">>, <<"HEAD">>, <<"OPTIONS">>], Req, State}.
 
 content_types_accepted(Req, State) ->
-    CT = [{{<<"application">>, <<"x-www-form-urlencoded">>, []}, from_qs},
-          {{<<"application">>, <<"json">>, []}, from_json}],
+    CT = [{{<<"application">>, <<"x-www-form-urlencoded">>, '*'}, from_qs},
+          {{<<"application">>, <<"json">>, '*'}, from_json}],
     {CT, Req, State}.
 
 content_types_provided(Req, State) ->
