@@ -51,19 +51,30 @@
                 Scroll output
             </label>
             <button id="share" title="Save snippet and share with others">share</button>
+            <select id="example" title="Examples">
+                <option value="b1e1">Hello, world!</option>
+                <option value="b2e1">Exploding mail</option>
+                <option value="b3e1">Streaming</option>
+                <option value="b4e1">Sleep-Sort</option>
+                <option value="b5e1">Pwned! passwd</option>
+                <option value="b6e1">Pwned! FS</option>
+            </select>
             <div id="transport-spinner" class="spinner" style="display: none;">
                 <div class="bounce1"></div>
                 <div class="bounce2"></div>
                 <div class="bounce3"></div>
             </div>
         </div>
-        <div id="share-panel" style="display: none;"></div>
+        <div id="share-panel" style="display: none;">
+            <span id="share-panel-link"></span>
+            <span id="share-panel-social"></span>
+        </div>
         <div id="editor">% -*- coding: utf8 -*-
 -module(main).
 -export([main/0]).
 
 main() ->
-    io:format("Hello, world~n!").</div>
+    io:format("Hello, world!~n").</div>
         <pre id="result"></pre>
     </body>
     <!-- Author: Sergey Prokhorov <me (at) seriyps.ru> -->

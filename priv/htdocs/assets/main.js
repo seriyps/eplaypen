@@ -74,10 +74,12 @@ $(function(){
             $release = $("#release"),
             $keyboard = $("#kb-layout"),
             $autoscroll = $("#autoscroll"),
-            $share = $("#share"),
-            $sharePanel = $("#share-panel");
+            $example = $("#example");
+        var $share = $("#share"),
+            $sharePanel = $("#share-panel"),
+            $sharePanelLink = $("#share-panel-link", $sharePanel),
+            $sharePanelSocial = $("#share-panel-social", $sharePanel);
         var $buttons = $([$evaluate[0], $compile[0]]);
-        this.$buttons = $buttons;
         this.$switches = $([$emit[0], $release[0], $keyboard[0], $autoscroll[0]]);
 
         // editor
@@ -164,6 +166,24 @@ $(function(){
         $compile.on('click', this.compile);
 
         // share
+        this.activatePaste = function(id, pickled) {
+            if (pickled) {      // activated by URL or examples button
+                self.lockUrl = true;
+                this.deserialize(pickled);
+                self.lockUrl = false;
+            }                   // else { } -  just created paste
+            $share.prop("disabled", true); // enabled in resetShare to avoid duplicates
+            var origin = document.location.origin;
+            var hash = '#id=' + id;
+            var shareUrl = origin + "/" + hash;
+            document.location.hash = hash;
+            var $a = $("<a/>",
+                       {href: shareUrl,
+                        text: shareUrl,
+                        target: "_blank"});
+            $sharePanelLink.empty().append($a);
+            $sharePanel.show();
+        }
         $share.on('click', function() {
             $share.prop("disabled", true); // enabled in resetShare to avoid duplicates
             var state = self.serialize();
@@ -171,26 +191,15 @@ $(function(){
                 .done(function(_1, _2, jqXHR) {
                     var location = jqXHR.getResponseHeader("location");
                     var id = location.split("/").pop();
-                    var origin = document.location.origin;
-                    var hash = '#id=' + id;
-                    var shareUrl = origin + "/" + hash;
-                    document.location.hash = hash;
-                    var $a = $("<a/>",
-                               {href: shareUrl,
-                                text: shareUrl,
-                                target: "_blank"});
-                    $sharePanel.append($a).show();
+                    self.activatePaste(id, null);
                 }).fail(function(jqXHR, textStatus) {
-                    $sharePanel.text("Error #" + jqXHR.status + ". " + textStatus + ". " + jqXHR.responseText)
-                    .show();
+                    alert("Error #" + jqXHR.status + ". " + textStatus + ". " + jqXHR.responseText);
                 })
         });
         this.lockUrl = false;
         function resetShare() {
             $share.prop("disabled", false);
-            $sharePanel
-                .hide()
-                .empty();
+            $sharePanel.hide();
             if (!self.lockUrl && document.location.hash) { // see Pickle
                 history.pushState(
                     '', document.title,
@@ -200,6 +209,19 @@ $(function(){
         this.editorSession.on("change", resetShare);
         this.$switches.on('change', resetShare);
 
+        // examples
+        $example.on('change', function() {
+            $example.prop("disabled", true);
+            var id = $example.val();
+            pastebin.get(id)
+                .done(function(o) {
+                    $example.prop("disabled", false);
+                    self.activatePaste(id, o);
+                }).fail(function(jqXHR, textStatus) {
+                    $example.prop("disabled", false);
+                    alert("Error #" + jqXHR.status + ". " + textStatus + ". " + jqXHR.responseText);
+                })
+        })
 
         // kb layout
         $keyboard.on('change', function() {
@@ -319,13 +341,10 @@ $(function(){
         })();
 
         if ("id" in qs) {
-            control.lockUrl = true;
             pastebin.get(qs.id)
                 .done(function(o) {
-                    control.deserialize(o);
-                    control.lockUrl = false;
+                    control.activatePaste(qs.id, o);
                 }).fail(function(jqXHR) {
-                    control.lockUrl = false;
                     alert("Can't restore snippet. Error #" + jqXHR.status + ". " + jqXHR.responseText);
                 });
             return              // don't try other pickle methods

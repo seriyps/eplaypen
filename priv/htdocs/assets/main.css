@@ -53,6 +53,9 @@ body, #control {
     margin-left: 15px;
 }
 
+#example {
+    float: right;
+}
 
 /* http://tobiasahlin.com/spinkit/ */
 .spinner {
