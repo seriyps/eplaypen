@@ -177,11 +177,50 @@ $(function(){
             var hash = '#id=' + id;
             var shareUrl = origin + "/" + hash;
             document.location.hash = hash;
+            // link to copy
             var $a = $("<a/>",
                        {href: shareUrl,
                         text: shareUrl,
                         target: "_blank"});
             $sharePanelLink.empty().append($a);
+            // social
+            (function() {
+                var title = "Share this snippet";
+                var twLink = "https://twitter.com/intent/tweet?" + $.param({
+                    hashtags: "Erlang",
+                    original_referer: document.location.href,
+                    text: "See! I've just created some Erlang snippet",
+                    url: shareUrl
+                });
+                var $tw = $("<a/>",
+                            {href: twLink,
+                             title: title,
+                             target: "_blank",
+                             class: "tw-share",
+                             html: "<span>&nbsp;</span>"});
+
+                var fbLink = "https://www.facebook.com/sharer/sharer.php?" + $.param({
+                    u: shareUrl
+                });
+                var $fb = $("<a/>",
+                            {href: fbLink,
+                             title: title,
+                             target: "_blank",
+                             class: "fb-share",
+                             html: "<span>&nbsp;</span>"});
+
+                var gpLink = "https://plus.google.com/share?" + $.param({
+                    url: shareUrl
+                });
+                var $gp = $("<a/>",
+                            {href: gpLink,
+                             title: title,
+                             target: "_blank",
+                             class: "gp-share",
+                             html: "<span>&nbsp;</span>"});
+
+                $sharePanelSocial.empty().append($tw, $fb, $gp);
+            })()
             $sharePanel.show();
         }
         $share.on('click', function() {
@@ -401,6 +440,7 @@ $(function(){
             // })
         };
         this.get = function(id) {
+            // TODO: cache {id: data}
             return $.ajax("/api/pastebin/" + id, {
                 type: 'GET',
                 dataType: "json"

@@ -57,6 +57,36 @@ body, #control {
     float: right;
 }
 
+/* social */
+#share-panel-social {
+    margin-left: 15px;
+}
+.tw-share > span, .fb-share > span, .gp-share > span {
+    width: 16px;
+    height: 14px;
+    display: inline-block;
+}
+
+.tw-share, .fb-share, .gp-share {
+    border-radius: 3px;
+    border: solid 1px #ccc;
+    background-image: linear-gradient(#fff,#dedede);
+    width: 20px;
+    height: 17px;
+    padding: 1px 3px;
+    margin: 0px 3px;
+}
+
+.tw-share > span {
+    background: transparent url(https://platform.twitter.com/widgets/images/btn.png) 0 2px no-repeat;
+}
+.fb-share > span {
+    background: transparent url(https://fbstatic-a.akamaihd.net/rsrc.php/v2/yQ/r/7GFXgco-uzw.png) 0 0 no-repeat;
+}
+.gp-share > span {
+    background: transparent url(https://www.gstatic.com/images/icons/gplus-16.png) 0 0 no-repeat;
+}
+
 /* http://tobiasahlin.com/spinkit/ */
 .spinner {
   /* margin: 30px auto 0; */
