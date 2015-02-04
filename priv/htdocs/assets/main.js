@@ -145,6 +145,7 @@ $(function(){
                     progress = false;
                     $buttons.prop("disabled", false);
                 })
+            ga('send', 'event', 'evaluate', 'submitted', 'r:' + $release.val());
         };
         $evaluate.on('click', this.evaluate);
 
@@ -162,6 +163,7 @@ $(function(){
                     progress = false;
                     $buttons.prop("disabled", false);
                 })
+            ga('send', 'event', 'compile', 'submitted', 'r:' + $release.val() + ';e:' + $emit.val());
         };
         $compile.on('click', this.compile);
 
@@ -234,6 +236,7 @@ $(function(){
                 }).fail(function(jqXHR, textStatus) {
                     alert("Error #" + jqXHR.status + ". " + textStatus + ". " + jqXHR.responseText);
                 })
+            ga('send', 'event', 'share', 'created', 'r:' + state.release + ';e:' + state.emit);
         });
         this.lockUrl = false;
         function resetShare() {
@@ -260,17 +263,21 @@ $(function(){
                     $example.prop("disabled", false);
                     alert("Error #" + jqXHR.status + ". " + textStatus + ". " + jqXHR.responseText);
                 })
+            ga('send', 'event', 'example', 'change',
+               $example.children("option").filter(":selected").text().toLowerCase()); // send snippet name
         })
 
         // kb layout
         $keyboard.on('change', function() {
             self.editor.setKeyboardHandler($keyboard.val() || null);
+            ga('send', 'event', 'ui', 'kb', $keyboard.val());
         })
 
         // autoscroll
         output.autoscroll = $autoscroll.prop("checked");
         $autoscroll.on('change', function() {
             output.autoscroll = $autoscroll.prop("checked");
+            ga('send', 'event', 'ui', 'autoscroll', $autoscroll.prop("checked"));
         })
 
         // shortcuts
