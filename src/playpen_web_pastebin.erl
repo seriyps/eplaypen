@@ -12,6 +12,7 @@
         resource_exists/2]).
 -export([to_qs/2, to_json/2,
          from_qs/2, from_json/2]).
+-export([encrypt/2, hex/1]).
 
 -type paste() ::
         #{pk => non_neg_integer(),

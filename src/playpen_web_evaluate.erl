@@ -150,7 +150,7 @@ run(Req, State, Argv, SourceCode) ->
                user => "eplaypen",
                bind => BindMount,
                hostname => "pp",
-               devices => [{"/dev/urandom", [r]}, {"/dev/null", [w]}]},
+               devices => [{"/dev/urandom", [r]}, {"/dev/null", [r, w]}]},
     IOOpts = #{max_output_size => 512 * 1024,
                collect_output => false,
                timeout => 10000,
