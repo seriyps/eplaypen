@@ -54,7 +54,13 @@ body, #control {
 }
 
 #example {
+    box-shadow: 0 0 10px #4e729a;
     float: right;
+}
+
+#donate-btc {
+    float: right;
+    margin-left: 10px;
 }
 
 /* social */
