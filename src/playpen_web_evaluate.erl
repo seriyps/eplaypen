@@ -91,8 +91,8 @@ handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release
             {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State}
     end;
-handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release,
-                                           <<"output_format">> := Output}) ->
+handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release} = KV) ->
+    Output = maps:get(<<"emit">>, KV, maps:get(<<"output_format">>, KV, <<"beam">>)),
     Formats = playpen:available_outputs(),
     Releases = playpen:available_releases(),
     case {lists:member(Output, Formats),

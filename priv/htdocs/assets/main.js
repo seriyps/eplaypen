@@ -313,7 +313,7 @@ $(function(){
                 data : JSON.stringify({
                     code: code,
                     release: release,
-                    output_format: emit
+                    emit: emit
                 }),
                 contentType: "application/json",
                 dataType: "text"
