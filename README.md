@@ -14,3 +14,11 @@ x-www-form-urlencoded
 ```bash
 curl -i -d "code=main%28%29%20-%3E%20ok.&release=17.4&output_format=beam" http://playerl.seriyps.ru/api/compile
 ```
+
+Add new release
+---------------
+
+1. Add it to `priv/RELEASES.txt`.
+2. Run `./bin/build_erl.sh`
+3. Connect to node and run `playpen:reload_releases()`
+4. Add it as `<option>` to `priv/index.html`

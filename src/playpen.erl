@@ -8,7 +8,7 @@
 -module(playpen).
 -behaviour(application).
 
--export([start/0, cowboy_reload_routes/0]).
+-export([start/0, cowboy_reload_routes/0, reload_releases/0]).
 -export([available_outputs/0, available_releases/0]).
 %% Application callbacks
 -export([start/2, stop/1]).
@@ -21,8 +21,7 @@
 start() ->
     lager:start(),
     {ok, _} = application:ensure_all_started(?APP),
-    Releases = read_releases(),
-    application:set_env(?APP, releases, Releases),
+    reload_releases(),
     Port = 8080,
     Ip = {127, 0, 0, 1},
     Concurrency = 10,
@@ -35,6 +34,10 @@ start() ->
 cowboy_reload_routes() ->
     Dispatch = cowboy_routes(),
     cowboy:set_env(http, dispatch, cowboy_router:compile(Dispatch)).
+
+reload_releases() ->
+    Releases = read_releases(),
+    application:set_env(?APP, releases, Releases).
 
 %% some info
 available_outputs() ->
