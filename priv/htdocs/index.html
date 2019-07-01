@@ -35,23 +35,19 @@
             <button id="compile" title="Ctrl + Shift + Enter">compile to:</button>
             <select id="emit" title="Compile target">
                 <option value="beam">just check for errors</option>
-                <option value="core">core erlang (.core)</option>
-                <option value="S">erlang assembler (.S)</option>
-                <option value="dis">beam VM assembler (.dis)</option>
                 <option value="P">preprocessed (.P)</option>
                 <option value="E">expanded (.E)</option>
+                <!-- <option value="abstr">abstract forms (.abstr)</option> -->
+                <option value="core">core erlang (.core)</option>
+                <option value="ssa">static single assignment (.ssa)</option>
+                <option value="S">erlang assembler (.S)</option>
+                <option value="dis">beam VM assembler opcodes (.dis)</option>
             </select>
             <select id="release" title="Erlang release">
-                <option>18.0</option>
-                <option>17.5</option>
-                <option>17.4</option>
-                <option>17.3</option>
-                <option>17.1</option>
-                <option>17.0</option>
-                <option>R16B03-1</option>
-                <option>R16B02</option>
-                <option>R16B01</option>
-                <option>R15B03-1</option>
+                <option>22.0</option>
+                <option>21.3</option>
+                <option>20.3</option>
+                <option>19.3</option>
             </select>
             <select id="kb-layout" title="Keyboard layout">
                 <option value="">Ace</option>
@@ -97,7 +93,8 @@
 -export([main/0]).
 
 main() ->
-    io:format("Hello, world!~n").</div>
+    io:format("Hello, world!~n").
+        </div>
         <pre id="result"></pre>
     </body>
     <!-- Author: Sergey Prokhorov <me (at) seriyps.ru> -->

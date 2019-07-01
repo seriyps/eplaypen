@@ -11,5 +11,5 @@
 -export([start_link/1]).
 
 
-start_link([Host, Username, Password, Opts]) ->
-    pgsql:connect(Host, Username, Password, Opts).
+start_link(Params) ->
+    epgsql:connect(Params).

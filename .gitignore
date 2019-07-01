@@ -1,9 +1,8 @@
 ebin/
-deps/
 log/
-.rebar/
-priv/erl_installations
-priv/pp-root
-bin/playpen
 erl_crash.dump
 *.ebin
+_build/
+deploy/vars.yml
+deploy/main.retry
+deploy/hosts

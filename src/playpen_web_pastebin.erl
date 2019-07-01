@@ -72,10 +72,10 @@ to_qs(Req, #{code := Code, release := Release, emit := Emit, pk := Pk} = State) 
      Req, State}.
 
 to_json(Req, #{code := Code, release := Release, emit := Emit, pk := Pk} = State) ->
-    {jiffy:encode({[{<<"code">>, Code},
-                    {<<"release">>, Release},
-                    {<<"emit">>, Emit},
-                    {<<"pk">>, hex(encrypt(Pk, ?KEY))}]}),
+    {jiffy:encode(#{<<"code">> => Code,
+                    <<"release">> => Release,
+                    <<"emit">> => Emit,
+                    <<"pk">> => hex(encrypt(Pk, ?KEY))}),
      Req, State}.
 
 
@@ -101,7 +101,7 @@ from_json(Req, State) ->
                     {ok, Req2} = cowboy_req:reply(400, [], "Invalid JSON", Req1),
                     {ok, Req2, State}
             end;
-        {more, Req1} ->
+        {more, _, Req1} ->
             {ok, Req2} = cowboy_req:reply(400, [], "Request body too long", Req1),
             {ok, Req2, State};
         {error, Reason} ->
@@ -113,7 +113,7 @@ handle_kv(KV, Req, State) ->
     Release = proplists:get_value(<<"release">>, KV),
     Format = proplists:get_value(<<"emit">>, KV),
     case {lists:member(Format, playpen:available_outputs()),
-          lists:member(Release, playpen:available_releases())} of
+          maps:is_key(Release, playpen:available_releases())} of
         {true, true} ->
             {ok, Pk} = create_paste(
                          #{code => proplists:get_value(<<"code">>, KV),
@@ -139,7 +139,7 @@ get_paste(Id) ->
            ?DB_POOL,
            fun(C) ->
                    Q = "SELECT release, emit, code, created FROM pastebin WHERE id=$1",
-                   pgsql:equery(C, Q, [Id])
+                   epgsql:equery(C, Q, [Id])
            end) of
         {ok, _, [{Release, Emit, Code, Created}]} ->
             {ok, #{pk => Id,
@@ -162,7 +162,7 @@ create_paste(#{code := Code, release := Release, emit := Emit, expires := Expire
                    Q = "INSERT INTO pastebin "
                        "(release, emit, code, expires, created) "
                        "VALUES ($1, $2, $3, $4, now()) RETURNING id",
-                   pgsql:equery(C, Q, [Release, Emit, Code, Expires])
+                   epgsql:equery(C, Q, [Release, Emit, Code, Expires])
            end) of
         {ok, 1, _, [{Id}]} ->
             {ok, Id};

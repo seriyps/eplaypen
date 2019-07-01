@@ -1,0 +1,26 @@
+user: my-manager-user
+upassword: "secret-password"
+workdir: "/home/{{ user }}/eplaypen"
+logdir: "/var/log/eplaypen"
+
+swap_file: "/swap500m"
+swap_file_size: 500M
+
+web_hostname: tryerl.seriyps.ru
+
+pp_user: eplaypen
+db_password: "secret-db-password"
+
+# crypto:rand_bytes(16)
+pastebin_key: "<<97,181,182,103,183,183,244,87,217,109,159,157,43,218,51,106>>"
+cookie: "some-secret"
+
+erl_releases:
+  - name: 22.0
+    tag: 22.0.4-alpine
+  - name: 21.3
+    tag: 21.3.8.4-alpine
+  - name: 20.3
+    tag: 20.3.8.22-alpine
+  - name: 19.3
+    tag: 19.3.6.13-slim

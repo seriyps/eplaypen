@@ -8,7 +8,7 @@
 -module(playpen).
 -behaviour(application).
 
--export([start/0, cowboy_reload_routes/0, reload_releases/0]).
+-export([start/0, cowboy_reload_routes/0]). %, reload_releases/0]).
 -export([available_outputs/0, available_releases/0]).
 %% Application callbacks
 -export([start/2, stop/1]).
@@ -19,9 +19,11 @@
 %% API
 
 start() ->
-    lager:start(),
     {ok, _} = application:ensure_all_started(?APP),
-    reload_releases(),
+    %% reload_releases(),
+    start_cowboy().
+
+start_cowboy() ->
     Port = 8080,
     Ip = {127, 0, 0, 1},
     Concurrency = 10,
@@ -35,9 +37,9 @@ cowboy_reload_routes() ->
     Dispatch = cowboy_routes(),
     cowboy:set_env(http, dispatch, cowboy_router:compile(Dispatch)).
 
-reload_releases() ->
-    Releases = read_releases(),
-    application:set_env(?APP, releases, Releases).
+%% reload_releases() ->
+%%     Releases = read_releases(),
+%%     application:set_env(?APP, releases, Releases).
 
 %% some info
 available_outputs() ->
@@ -46,8 +48,10 @@ available_outputs() ->
      <<"E">>,    % compile:forms(.., ['E'])                 | erlc -E mod.erl
      <<"S">>,    % compile:forms(.., ['S'])                 | erlc -S mod.erl
      <<"dis">>,  % compile:forms(.., []), erts_debug:df(..) | erlc mod.erl && erl -eval 'erts_debug:df(mod).'
+     <<"ssa">>,  % compile:forms(.., [dssa])                | erlc +dssa mod.erl
      <<"core">>].% compile:forms(.., [to_core])             | erlc +to_core mod.erl
 
+-spec available_releases() -> #{Name :: binary() => Image :: string()}.
 available_releases() ->
     {ok, Releases} = application:get_env(?APP, releases),
     Releases.
@@ -55,18 +59,20 @@ available_releases() ->
 
 %% applicaion callback
 start(_, _) ->
-    playpen_sup:start_link().
+    Res = playpen_sup:start_link(),
+    start_cowboy(),
+    Res.
 
 stop(_) ->
     ok.
 
 %% Internals
 
-read_releases() ->
-    ReleasesListPath = filename:join([code:priv_dir(?APP), "RELEASES.txt"]),
-    {ok, ReleasesBin} = file:read_file(ReleasesListPath),
-    [L1 | _] = binary:split(ReleasesBin, [<<"\n">>, <<"\r">>]),
-    lists:reverse(binary:split(L1, <<" ">>, [global, trim])).
+%% read_releases() ->
+%%     ReleasesListPath = filename:join([code:priv_dir(?APP), "RELEASES.txt"]),
+%%     {ok, ReleasesBin} = file:read_file(ReleasesListPath),
+%%     [L1 | _] = binary:split(ReleasesBin, [<<"\n">>, <<"\r">>]),
+%%     lists:reverse(binary:split(L1, <<" ">>, [global, trim])).
 
 cowboy_routes() ->
     [{'_',

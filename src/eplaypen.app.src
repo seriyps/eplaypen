@@ -9,8 +9,14 @@
                   stdlib,
                   sasl,
                   crypto,
+                  poolboy,
+                  jiffy,
+                  epgsql,
+                  lager,
                   cowboy
                  ]},
   {mod, {playpen, []}},
-  {env, []}
+  {env, [
+         {releases, []}
+        ]}
  ]}.

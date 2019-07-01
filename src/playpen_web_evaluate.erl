@@ -11,6 +11,8 @@
 
 -export([from_urlencoded/2, from_json/2]).
 
+-include_lib("hut/include/hut.hrl").
+
 -define(BODY_LIMIT, 102400).
 
 
@@ -20,7 +22,7 @@ init({tcp, http}, Req, Opts) ->
     {ok, Req, Opts}.
 
 handle(Req, State) ->
-    lager:info("handle"),
+    ?log(info, "handle"),
     case cowboy_req:parse_header(<<"content-type">>, Req) of
         {ok, {<<"application">>, <<"x-www-form-urlencoded">>, _}, Req2} ->
             handle_body(Req2, State, from_urlencoded);
@@ -45,7 +47,7 @@ handle_body(Req, State, ParserCallback) ->
 
 
 from_urlencoded(Req, State) ->
-    lager:info("Urlencoded req"),
+    ?log(info, "Urlencoded req"),
     case cowboy_req:body_qs(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
         {ok, KV, Req2} ->
             handle_arguments(Req2, State, maps:from_list(KV));
@@ -60,7 +62,7 @@ from_urlencoded(Req, State) ->
     end.
 
 from_json(Req, State) ->
-    lager:info("JSON req"),
+    ?log(info, "JSON req"),
     case cowboy_req:body(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
         {ok, Data, Req1} ->
             try jiffy:decode(Data, [return_maps]) of
@@ -70,7 +72,7 @@ from_json(Req, State) ->
                     {ok, Req2} = cowboy_req:reply(400, [], "Invalid JSON", Req1),
                     {ok, Req2, State}
             end;
-        {more, Req1} ->
+        {more, _, Req1} ->
             {ok, Req2} = cowboy_req:reply(400, [], "Request body too long", Req1),
             {ok, Req2, State};
         {error, Reason} ->
@@ -80,11 +82,11 @@ from_json(Req, State) ->
 
 handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release">> := Release}) ->
     Releases = playpen:available_releases(),
-    case {lists:member(Release, Releases), find_module_name(SourceCode)} of
-        {true, {ok, Mod}} ->
-            Script = filename:join([filename:absname(code:priv_dir(eplaypen)), "scripts", "evaluate.sh"]),
-            run(Req, State, [Script, Mod, Release, integer_to_binary(iolist_size(SourceCode))], SourceCode);
-        {false, _} ->
+    case {maps:find(Release, Releases), find_module_name(SourceCode)} of
+        {{ok, ReleaseTag}, {ok, Mod}} ->
+            Script = filename:join(["/mnt", "scripts", "evaluate.sh"]),
+            run(Req, State, ReleaseTag, [Script, Mod, integer_to_binary(iolist_size(SourceCode))], SourceCode);
+        {error, _} ->
             {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Unknown release ~p", [Release]), Req),
             {ok, Req2, State};
         {_, error} ->
@@ -96,11 +98,11 @@ handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release"
     Formats = playpen:available_outputs(),
     Releases = playpen:available_releases(),
     case {lists:member(Output, Formats),
-          lists:member(Release, Releases),
+          maps:find(Release, Releases),
           find_module_name(SourceCode)} of
-        {true, true, {ok, Mod}} ->
-            Script = filename:join([filename:absname(code:priv_dir(eplaypen)), "scripts", "compile.sh"]),
-            run(Req, State, [Script, Mod, Release, integer_to_binary(iolist_size(SourceCode)), Output], SourceCode);
+        {true, {ok, ReleaseTag}, {ok, Mod}} ->
+            Script = filename:join(["/mnt", "scripts", "compile.sh"]),
+            run(Req, State, ReleaseTag, [Script, Mod, integer_to_binary(iolist_size(SourceCode)), Output], SourceCode);
         {_, _, error} ->
             {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State};
@@ -118,8 +120,8 @@ handle_arguments(Req, State, Payload) ->
     {ok, Req2, State}.
 
 
--spec run(cowboy_req:req(), term(), list(), iodata()) -> {ok, cowboy_req:req(), term()}.
-run(Req, State, Argv, SourceCode) ->
+-spec run(cowboy_req:req(), term(), unicode:chardata(), list(), iodata()) -> {ok, cowboy_req:req(), term()}.
+run(Req, State, Release, Argv, SourceCode) ->
     OutForm = text,
     ContentType = case OutForm of
                       text -> <<"text/plain">>;
@@ -127,30 +129,21 @@ run(Req, State, Argv, SourceCode) ->
                   end,
     {ok, Req1} = cowboy_req:chunked_reply(200, [{<<"content-type">>, ContentType}], Req),
     Callback = fun(Chunk, Req2) ->
-                       lager:debug("Chunk ~p", [iolist_size(Chunk)]),
+                       ?log(debug, "Chunk ~p", [iolist_size(Chunk)]),
                        ok = cowboy_req:chunk(output_frame(Chunk, OutForm), Req2),
                        Req2
                end,
 
     AppRoot = filename:absname(code:lib_dir(eplaypen)),
     PrivDir = filename:absname(code:priv_dir(eplaypen)),
-    PPExe = filename:join([AppRoot, "bin", "playpen"]),
-    PPRoot = filename:join([PrivDir, "pp-root"]),
     BindMount = [
-                 filename:join(PrivDir, "erl_installations"),
-                 filename:join(PrivDir, "scripts")
+                 {filename:join(PrivDir, "scripts"), "/mnt/scripts", ro}
                 ],
-    PPOpts = #{root => PPRoot,
-               sudo => true,
-               executable => PPExe,
-               timeout => 15,
+    PPOpts = #{timeout => 15,
                memory_limit => 64,
-               mount_proc => true,
-               mount_dev => true,
-               user => "eplaypen",
-               bind => BindMount,
-               hostname => "pp",
-               devices => [{"/dev/urandom", [r]}, {"/dev/null", [r, w]}]},
+               image => iolist_to_binary(lists:join(":", ["erlang", Release])),
+               cpu_limit => 1,
+               mount => BindMount},
     IOOpts = #{max_output_size => 512 * 1024,
                collect_output => false,
                timeout => 10000,

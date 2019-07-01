@@ -1,0 +1,5 @@
+-sname eplaypen
+-setcookie eplaypen-cookie-{{ cookie }}
+-kernel shell_history enabled
++A 2
++SDio 2

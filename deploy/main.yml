@@ -1,0 +1,265 @@
+- hosts: playpen
+  remote_user: root
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: "Install APT packages"
+      apt:
+        cache_valid_time: 86400
+        name:
+          - htop
+          - tree
+          - sudo
+          - git
+          - erlang-nox
+          - erlang-dev
+          - docker.io
+          - nginx
+          - postgresql
+          - build-essential     # jiffy
+          - python3-psycopg2    # ansible
+          - python3-docker      # ansible
+          - prometheus-node-exporter
+      tags:
+        - apt
+    - name: "Create manager user"
+      user:
+        name: "{{ user }}"
+        password: "{{ upassword | password_hash('sha512') }}"
+        groups:
+          - sudo
+          - adm
+          - docker
+        append: yes
+        shell: /bin/bash
+        skeleton: /etc/skel
+    - name: "Ensure sudo"
+      copy:
+        content: "%sudo   ALL=(ALL:ALL) ALL\n"
+        dest: /etc/sudoers.d/10-sudo-group
+        mode: 0440
+    - name: "Add SSH authorized_key"
+      authorized_key:
+        user: "{{ user }}"
+        key: https://github.com/seriyps.keys
+      tags:
+        - ssh
+    - name: "Create service user"
+      user:
+        name: "{{ pp_user }}"
+        groups:
+          - docker
+          - "{{ user }}"        # to be able to read sys.config
+        append: yes
+        shell: /bin/bash
+        skeleton: /etc/skel
+    - name: "install rebar3"
+      get_url:
+        url: https://github.com/erlang/rebar3/releases/download/3.11.1/rebar3
+        dest: /usr/local/bin/rebar3
+        owner: root
+        group: root
+        mode: u=rwx,g=rx,o=rx
+      tags:
+        - env
+    - name: "Make logdir"
+      file:
+        path: "{{ logdir }}"
+        state: directory
+        owner: "{{ pp_user }}"
+      tags:
+        - env
+
+    # Add SWAP
+    - name: "Ensure swap not exists"
+      stat:
+        path: "{{swap_file}}"
+      register: swap_file_check
+      tags:
+        - swap
+    - name: "Allocate swap"
+      command: "fallocate -l {{swap_file_size}} {{swap_file}}"
+      when: not swap_file_check.stat.exists
+      tags:
+        - swap
+    - name: "Change swap file permissions"
+      file:
+        path: "{{swap_file}}"
+        owner: root
+        group: root
+        mode: 0600
+      when: not swap_file_check.stat.exists
+      tags:
+        - swap
+    - name: "Format swap file"
+      command: "mkswap {{swap_file}}"
+      when: not swap_file_check.stat.exists
+      tags:
+        - swap
+    - name: Write swap entry in fstab
+      mount:
+        name: none
+        src: "{{swap_file}}"
+        fstype: swap
+        opts: sw
+        passno: 0
+        dump: 0
+        state: present
+      when: not swap_file_check.stat.exists
+      tags:
+        - swap
+    - name: "Turn on swap"
+      command: swapon -a
+      when: not swap_file_check.stat.exists
+      tags:
+        - swap
+
+- hosts: playpen
+  remote_user: "{{ user }}"
+  vars_files:
+    - vars.yml
+  tasks:
+    # misc
+    - name: "Enable erlang persistent history"
+      lineinfile:
+        path: ~/.profile
+        regexp: "ERL_AFLAGS="
+        line: "export ERL_AFLAGS=\"-kernel shell_history enabled\""
+      tags:
+        - erlconfig
+
+    # Sources
+    - name: "Clone code"
+      git:
+        repo: "git@seriyps.ru:eplaypen.git"
+        dest: "{{ workdir }}"
+        accept_hostkey: true
+        version: "{{ branch | default('master') }}"
+      tags:
+        - src
+
+    # Release
+    - name: "Create sys.config"
+      template:
+        src: templates/sys.config
+        mode: u=rw,g=r,o=
+        dest: "{{ workdir }}/conf/sys.config"
+      tags:
+        - conf
+    - name: "Create vm.args"
+      template:
+        src: templates/vm.args
+        dest: "{{ workdir }}/conf/vm.args"
+      tags:
+        - conf
+    - name: "Build release"
+      command: "rebar3 as prod release"
+      args:
+        chdir: "{{workdir}}"
+      tags:
+        - release
+
+# Database
+- hosts: playpen
+  remote_user: "{{ user }}"
+  vars_files:
+    - vars.yml
+  tags:
+    - postgres
+  tasks:
+    - name: "Use scram password encryption by-default"
+      become: true
+      become_user: postgres
+      register: pg_use_scram_config
+      lineinfile:
+        path: /etc/postgresql/10/main/postgresql.conf
+        regexp: "password_encryption = "
+        line: "password_encryption = scram-sha-256"
+    - name: "Allow logins for DB user"
+      become: true
+      become_user: postgres
+      register: pg_use_scram_config
+      lineinfile:
+        path: /etc/postgresql/10/main/pg_hba.conf
+        regexp: "host eplaypen"
+        line: "host eplaypen eplaypen 127.0.0.1/0 scram-sha-256"
+    - name: "Restart DB"
+      become: true
+      when: pg_use_scram_config.changed
+      systemd:
+        name: postgresql
+        state: restarted
+    - name: "Add DB user"
+      become: true
+      become_user: postgres
+      postgresql_user:
+        name: "{{ pp_user }}"
+        password: "{{ db_password }}"
+        encrypted: true
+    - name: "Add DB base"
+      become: true
+      become_user: postgres
+      postgresql_db:
+        name: eplaypen
+        owner: "{{ pp_user }}"
+    - name: "Add DB schema"
+      become: true
+      become_user: postgres
+      postgresql_db:
+        name: eplaypen
+        state: restore
+        encoding: "UTF-8"
+        target: "{{ workdir }}/priv/db_schema.sql"
+- hosts: playpen
+  remote_user: "{{ user }}"
+  vars_files:
+    - vars.yml
+  tasks:
+    # Erlang docker images
+    - name: "Pull docker images"
+      docker_image:
+        name: "erlang:{{ item.tag }}"
+      loop: "{{ erl_releases }}"
+      tags:
+        erl_version
+
+    # Systemd
+    - name: "Create systemd service"
+      become: true
+      template:
+        src: templates/systemd.service
+        dest: "/etc/systemd/system/eplaypen.service"
+      tags:
+        - systemd
+    - name: "Systemd re-read configs"
+      become: true
+      systemd:
+        name: eplaypen
+        daemon_reload: yes
+      tags:
+        - systemd
+    - name: "Start"
+      become: true
+      systemd:
+        name: eplaypen
+        state: started
+        enabled: yes
+      tags:
+        - systemd
+        - start
+
+    # Nginx
+    - name: "Create nginx config"
+      become: true
+      template:
+        src: templates/nginx.conf
+        dest: "/etc/nginx/sites-enabled/eplaypen.conf"
+      tags:
+        - nginx
+    - name: "Reload nginx config"
+      become: true
+      systemd:
+        name: nginx
+        state: reloaded
+      tags:
+        - nginx

@@ -11,21 +11,16 @@
 
 -export_type([playpen_opts/0, io_opts/0]).
 
+-include_lib("hut/include/hut.hrl").
+
 -type playpen_opts() ::
         #{executable => file:filename(),
           sudo => boolean(),
-          root => file:filename(),              % required
-          mount_proc => boolean(),
-          mount_dev => boolean(),
-          bind => [file:filename()],
-          bind_rw => [file:filename()],
-          user => iodata(),
-          hostname => iodata(),
+          image => unicode:chardata(),
+          mount => [{From :: file:filename(), To :: file:filename(), Mode :: ro | rw}],
           timeout => non_neg_integer(),
           memory_limit => pos_integer(),
-          devices => [{file:filename(), [r | w | m]}],
-          syscalls => [string()],
-          syscalls_file => file:filename()}.
+          cpu_limit => pos_integer()}.
 
 -type io_opts() ::
         #{max_output_size => pos_integer(),
@@ -37,7 +32,7 @@
 
 
 
--spec cmd([string() | binary()], iodata(), playpen_opts(), io_opts()) ->
+-spec cmd([string() | binary(), ...], iodata(), playpen_opts(), io_opts()) ->
                  {ok, {Code, Output, CallbackState}}
                  | {error, {output_too_large | timeout, Output, CallbackState}}
                      when
@@ -46,7 +41,7 @@
       CallbackState :: term().
 cmd([_Callable | _Argv] = Cmd, Stdin, PPOpts, IOOpts) ->
     [Callable1 | Argv1] = build_playpen_argv(Cmd, PPOpts),
-    lager:info("<~p> | ~p ~p", [iolist_size(Stdin), Callable1, Argv1]),
+    ?log(info, "<~p> | ~p ~p", [iolist_size(Stdin), Callable1, Argv1]),
     Port = erlang:open_port(
              {spawn_executable, Callable1},
              [{args, Argv1},
@@ -59,81 +54,64 @@ cmd([_Callable | _Argv] = Cmd, Stdin, PPOpts, IOOpts) ->
     Response = port_loop(Port, IOOpts),
     %% This flush should loop to read all extra messages
     receive {Port, Payload} ->
-            lager:warning("Extra port data flushed ~p", [Payload])
+            ?log(warning, "Extra port data flushed ~p", [Payload])
     after 0 -> ok
     end,
     Response.
 
-build_playpen_argv(Cmd, #{root := Root} = Opts) ->
+build_playpen_argv(Cmd, #{image := Image} = Opts) ->
     Executable = case maps:find(executable, Opts) of
                      {ok, P} -> P;
                      error ->
                          %% may return false!
-                         os:find_executable("playpen")
+                         os:find_executable("docker")
                  end,
-    Cmd1 = [Root, "--" | Cmd],
-    PPOpts = maps:without([executable, root, sudo], Opts),
-    Cmd2 = add_playpen_opts(Cmd1, maps:to_list(PPOpts)),
+    Cmd1 = ["-i", Image | Cmd],
+    PPOpts = maps:without([executable, sudo, image], Opts),
+    Cmd2 = add_playpen_opts(Cmd1, lists:sort(maps:to_list(PPOpts))),
     case maps:find(sudo, Opts) of
         {ok, true} ->
             Sudo = os:find_executable("sudo"),
-            [Sudo, Executable | Cmd2];
+            [Sudo, Executable, "run" | Cmd2];
         _ ->
-            [Executable | Cmd2]
+            [Executable, "run" | Cmd2]
     end.
     %% Cmd.
 
 add_playpen_opts(Cmd, []) ->
     Cmd;
-add_playpen_opts(Cmd, [{mount_proc, true} | Opts]) ->
-    ["--mount-proc" | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{mount_dev, true} | Opts]) ->
-    ["--mount-dev" | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{bind, V} | Opts]) ->
-    WithFlags = lists:foldl(fun(Dir, Acc) ->
-                                    ["-b", Dir | Acc]
-                            end, [], V),
-    WithFlags ++ add_playpen_opts(Cmd, Opts);
-add_playpen_opts(Cmd, [{bind_rw, V} | Opts]) ->
-    WithFlags = lists:foldl(fun(Dir, Acc) ->
-                                    ["-B", Dir | Acc]
-                            end, [], V),
-    WithFlags ++ add_playpen_opts(Cmd, Opts);
-add_playpen_opts(Cmd, [{user, V} | Opts]) ->
-    ["--user", V | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{hostname, V} | Opts]) ->
-    ["--hostname", V | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{mount, Mounts} | Opts]) ->
+    MountsArg =
+        lists:foldl(
+          fun({From ,To, RW}, Acc) ->
+                  RWs = case RW of
+                            ro -> "ro";
+                            rw -> "rw"
+                        end,
+                  V = lists:join(":", [From, To, RWs]),
+                  ["--volume", unicode:characters_to_binary(V) | Acc]
+          end, [], Mounts),
+    MountsArg ++  add_playpen_opts(Cmd, Opts);
 add_playpen_opts(Cmd, [{timeout, V} | Opts]) ->
-    ["--timeout", integer_to_list(V) | add_playpen_opts(Cmd, Opts)];
+    ["--stop-timeout", integer_to_list(V) | add_playpen_opts(Cmd, Opts)];
 add_playpen_opts(Cmd, [{memory_limit, V} | Opts]) ->
-    ["--memory-limit", integer_to_list(V) | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{devices, V} | Opts]) ->
-    WithAttrs = [begin
-                     SAccess = lists:map(fun erlang:atom_to_list/1, Access),
-                     AccessStr = lists:flatten(SAccess),
-                     lists:flatten([Dev, $\:, AccessStr])
-                 end || {Dev, Access} <- V],
-    Csv = string:join(WithAttrs, ","),
-    ["--devices", Csv | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{syscalls, V} | Opts]) ->
-    Csv = string:join(V, ","),
-    ["--syscalls", Csv | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{syscalls_file, V} | Opts]) ->
-    ["--syscalls-file", V | add_playpen_opts(Cmd, Opts)];
-add_playpen_opts(Cmd, [{K, false} | Opts]) when (K == mount_proc) orelse (K == mount_dev) ->
-    add_playpen_opts(Cmd, Opts).
-
+    %% Swap is not allowed!
+    StrV = integer_to_list(V) ++ "m",
+    ["--memory-swap", StrV,
+     "--memory", StrV | add_playpen_opts(Cmd, Opts)];
+add_playpen_opts(Cmd, [{cpu_limit, N} | Opts]) ->
+    ["--cpus", integer_to_list(N) | add_playpen_opts(Cmd, Opts)].
 
 port_loop(Port, Opts) ->
-    CallbackState = maps_get(output_callback_state, Opts, undefined),
+    CallbackState = maps:get(output_callback_state, Opts, undefined),
     port_loop(Port, Opts, {0, [], CallbackState}).
 
 port_loop(Port, #{max_output_size := Max}, {Size, Acc, CbState}) when Size > Max ->
-    lager:info("Too large output. Max: ~p, Size: ~p", [Max, Size]),
+    ?log(info, "Too large output. Max: ~p, Size: ~p", [Max, Size]),
     erlang:port_close(Port),
     {error, {output_too_large, lists:reverse(Acc), CbState}};
 port_loop(Port, Opts, {Size, Acc, CbState}) ->
-    Timeout = maps_get(timeout, Opts, infinity),
+    Timeout = maps:get(timeout, Opts, infinity),
     receive
         {Port, {data, Data}} ->
             CbState1 =
@@ -154,16 +132,36 @@ port_loop(Port, Opts, {Size, Acc, CbState}) ->
         {Port, {exit_status, Status}} ->
             {ok, {Status, lists:reverse(Acc), CbState}}
     after Timeout ->
-            lager:info("Port timeout. Timeout: ~p, Size: ~p", [Timeout, Size]),
+            ?log(info, "Port timeout. Timeout: ~p, Size: ~p", [Timeout, Size]),
             erlang:port_close(Port),
             {error, {timeout, lists:reverse(Acc), CbState}}
     end.
 
+-ifdef(TEST).
 
-maps_get(Key, Map, Default) ->
-    case maps:find(Key, Map) of
-        error ->
-            Default;
-        {ok, Val} ->
-            Val
-    end.
+-include_lib("eunit/include/eunit.hrl").
+
+build_argv_simple_test() ->
+    Opts = #{image => "ubuntu",
+             executable => "docker"},
+    ?assertEqual(["docker", "run", "-i", "ubuntu", "cat"],
+                 build_playpen_argv(["cat"], Opts)).
+
+build_argv_full_test() ->
+    Opts = #{image => "ubuntu",
+             executable => "docker",
+             timeout => 10,
+             memory_limit => 100,
+             cpu_limit => 2,
+             mount => [{"/tmp", "/mnt", rw}],
+             sudo => true
+            },
+    ?assertEqual(["/usr/bin/sudo", "docker", "run",
+                  "--cpus", "2",
+                  "--memory-swap", "100", "--memory", "100",
+                  "--volume", <<"/tmp:/mnt:rw">>,
+                  "--stop-timeout", "10",
+                  "-i", "ubuntu", "cat"],
+                 build_playpen_argv(["cat"], Opts)).
+
+-endif.

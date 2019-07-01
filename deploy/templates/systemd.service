@@ -1,0 +1,27 @@
+[Unit]
+SourcePath={{ workdir }}/_build/prod/rel/eplaypen/bin/eplaypen
+Description=Starts the playpen server
+After=local-fs.target
+After=remote-fs.target
+After=network-online.target
+After=nss-lookup.target
+Wants=postgresql.service
+Wants=network-online.target
+Requires=epmd.service
+
+[Service]
+Type=simple
+User={{ pp_user }}
+Group={{ pp_user }}
+Restart=on-failure
+TimeoutSec=1min
+IgnoreSIGPIPE=no
+KillMode=process
+GuessMainPID=no
+RemainAfterExit=no
+ExecStart={{ workdir }}/_build/prod/rel/eplaypen/bin/eplaypen foreground
+ExecStop={{ workdir }}/_build/prod/rel/eplaypen/bin/eplaypen stop
+TimeoutStopSec=15s
+
+[Install]
+WantedBy=multi-user.target
