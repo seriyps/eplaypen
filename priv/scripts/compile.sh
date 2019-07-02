@@ -18,6 +18,7 @@ head -c $INPUT_SIZE > "$IN_FILE"
 case $OUTPUT_FORMAT in
     beam)
         erlc -Wall "$IN_FILE"
+        erl -noshell +A 0 -eval "c:m('${MODULE}'), erlang:halt(0)."
         ;;
     P | E | S)
         erlc -Wall -$OUTPUT_FORMAT "$IN_FILE"
@@ -27,23 +28,18 @@ case $OUTPUT_FORMAT in
         erlc -Wall +dssa "$IN_FILE"
         cat "${MODULE}.ssa"
         ;;
-    # E)
-    #     erlc -Wall -E -o $OUT_FILE in.erl
-    #     cat $OUT_FILE
-    #     ;;
-    # S)
-    #     erlc -Wall -S -o $OUT_FILE in.erl
-    #     cat $OUT_FILE
-    #     ;;
     core)
         erlc -Wall +to_core "$IN_FILE"
         cat "${MODULE}.core"
         ;;
-        
+    dis_gte20)
+        # Works on OTP >= 20
+        erlc -Wall +to_dis $IN_FILE
+        cat "${MODULE}.dis"
+        ;;
     dis)
-        # TODO: erlc +to_dis $IN_FILE works on Erlang >= 20
         erlc -Wall $IN_FILE
-        erl -noshell -eval "erts_debug:df('${MODULE}'), erlang:halt(0)."
+        erl -noshell +A 0 -eval "erts_debug:df('${MODULE}'), erlang:halt(0)."
         cat "${MODULE}.dis"
         ;;
 esac

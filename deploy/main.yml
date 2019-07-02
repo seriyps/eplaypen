@@ -242,7 +242,7 @@
       become: true
       systemd:
         name: eplaypen
-        state: started
+        state: restarted
         enabled: yes
       tags:
         - systemd
