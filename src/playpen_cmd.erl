@@ -66,7 +66,12 @@ build_playpen_argv(Cmd, #{image := Image} = Opts) ->
                          %% may return false!
                          os:find_executable("docker")
                  end,
-    Cmd1 = ["-i", Image | Cmd],
+    Cmd1 = ["-i",
+            "--pids-limit", "32",
+            "--net", "none",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            Image | Cmd],
     PPOpts = maps:without([executable, sudo, image, timeout], Opts),
     Cmd2 = [Executable, "run" | add_playpen_opts(Cmd1, lists:sort(maps:to_list(PPOpts)))],
     Cmd3 = case maps:find(timeout, Opts) of
@@ -149,7 +154,13 @@ port_loop(Port, Opts, {Size, Acc, CbState}) ->
 build_argv_simple_test() ->
     Opts = #{image => "ubuntu",
              executable => "docker"},
-    ?assertEqual(["docker", "run", "-i", "ubuntu", "cat"],
+    ?assertEqual(["docker", "run",
+                  "-i",
+                  "--pids-limit", "32",
+                  "--net", "none",
+                  "--cap-drop=ALL",
+                  "--security-opt=no-new-privileges",
+                  "ubuntu", "cat"],
                  build_playpen_argv(["cat"], Opts)).
 
 build_argv_full_test() ->
@@ -167,7 +178,12 @@ build_argv_full_test() ->
                   "--cpus", "2",
                   "--memory-swap", "100m", "--memory", "100m",
                   "--volume", <<"/tmp:/mnt:rw">>,
-                  "-i", "ubuntu", "cat"],
+                  "-i",
+                  "--pids-limit", "32",
+                  "--net", "none",
+                  "--cap-drop=ALL",
+                  "--security-opt=no-new-privileges",
+                  "ubuntu", "cat"],
                  build_playpen_argv(["cat"], Opts)).
 
 -endif.
