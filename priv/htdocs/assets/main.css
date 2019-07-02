@@ -67,13 +67,13 @@ body, #control {
 #share-panel-social {
     margin-left: 15px;
 }
-.tw-share > span, .fb-share > span, .gp-share > span {
+.tw-share > span, .fb-share > span, .tg-share > span {
     width: 16px;
     height: 14px;
     display: inline-block;
 }
 
-.tw-share, .fb-share, .gp-share {
+.tw-share, .fb-share, .tg-share {
     border-radius: 3px;
     border: solid 1px #ccc;
     background-image: linear-gradient(#fff,#dedede);
@@ -87,10 +87,10 @@ body, #control {
     background: transparent url(https://platform.twitter.com/widgets/images/btn.png) 0 2px no-repeat;
 }
 .fb-share > span {
-    background: transparent url(https://fbstatic-a.akamaihd.net/rsrc.php/v2/yQ/r/7GFXgco-uzw.png) 0 0 no-repeat;
+    background: transparent no-repeat center/contain url(https://facebook.com/favicon.ico);
 }
-.gp-share > span {
-    background: transparent url(https://www.gstatic.com/images/icons/gplus-16.png) 0 0 no-repeat;
+.tg-share > span {
+    background: transparent no-repeat center/contain url(https://telegram.org/favicon.ico);
 }
 
 /* http://tobiasahlin.com/spinkit/ */

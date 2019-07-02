@@ -188,10 +188,11 @@ $(function(){
             // social
             (function() {
                 var title = "Share this snippet";
+                var text = "See! I've just created some Erlang snippet";
                 var twLink = "https://twitter.com/intent/tweet?" + $.param({
                     hashtags: "Erlang",
                     original_referer: document.location.href,
-                    text: "See! I've just created some Erlang snippet",
+                    text: text,
                     url: shareUrl
                 });
                 var $tw = $("<a/>",
@@ -210,15 +211,15 @@ $(function(){
                              target: "_blank",
                              class: "fb-share",
                              html: "<span>&nbsp;</span>"});
-
-                var gpLink = "https://plus.google.com/share?" + $.param({
-                    url: shareUrl
+                var tgLink = "https://telegram.me/share/url?" + $.param({
+                    url: shareUrl,
+                    text: text
                 });
                 var $gp = $("<a/>",
-                            {href: gpLink,
+                            {href: tgLink,
                              title: title,
                              target: "_blank",
-                             class: "gp-share",
+                             class: "tg-share",
                              html: "<span>&nbsp;</span>"});
 
                 $sharePanelSocial.empty().append($tw, $fb, $gp);
