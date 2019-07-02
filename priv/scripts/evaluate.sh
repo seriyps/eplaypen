@@ -14,8 +14,6 @@ cd $WORKDIR
 head -c $INPUT_SIZE > "$IN_FILE"
 
 erlc -Wall "$IN_FILE"
-# `+pc unicode` only >=R16
-# ERL_CRASH_DUMP=/dev/null erl -noshell -s $MODULE main -s erlang halt
 
 RUNSNIP="
 io:setopts([{encoding, utf8}]),

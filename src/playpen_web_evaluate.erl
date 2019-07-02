@@ -22,7 +22,7 @@ init({tcp, http}, Req, Opts) ->
     {ok, Req, Opts}.
 
 handle(Req, State) ->
-    ?log(info, "handle"),
+    ?log(debug, "handle"),
     case cowboy_req:parse_header(<<"content-type">>, Req) of
         {ok, {<<"application">>, <<"x-www-form-urlencoded">>, _}, Req2} ->
             handle_body(Req2, State, from_urlencoded);
@@ -47,7 +47,7 @@ handle_body(Req, State, ParserCallback) ->
 
 
 from_urlencoded(Req, State) ->
-    ?log(info, "Urlencoded req"),
+    ?log(debug, "Urlencoded req"),
     case cowboy_req:body_qs(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
         {ok, KV, Req2} ->
             handle_arguments(Req2, State, maps:from_list(KV));
@@ -62,7 +62,7 @@ from_urlencoded(Req, State) ->
     end.
 
 from_json(Req, State) ->
-    ?log(info, "JSON req"),
+    ?log(debug, "JSON req"),
     case cowboy_req:body(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
         {ok, Data, Req1} ->
             try jiffy:decode(Data, [return_maps]) of

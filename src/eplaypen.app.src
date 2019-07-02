@@ -17,6 +17,6 @@
                  ]},
   {mod, {playpen, []}},
   {env, [
-         {releases, []}
+         {releases, #{<<"21.3">> => "21.3.8.4-alpine"}}
         ]}
  ]}.
