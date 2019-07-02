@@ -45,9 +45,11 @@ cowboy_reload_routes() ->
 available_outputs() ->
     [<<"beam">>, % erl_lint                                 | erlc mod.erl
      <<"P">>,    % compile:forms(.., ['P'])                 | erlc -P mod.erl
+     <<"abstr">>, % compile:forms(.., [dabstr])             | erlc +dabstr mod.erl
      <<"E">>,    % compile:forms(.., ['E'])                 | erlc -E mod.erl
      <<"S">>,    % compile:forms(.., ['S'])                 | erlc -S mod.erl
      <<"dis">>,  % compile:forms(.., []), erts_debug:df(..) | erlc mod.erl && erl -eval 'erts_debug:df(mod).'
+     <<"kernel">>, % compile:forms(.., [dkernel])           | erlc +dkernel mod.erl
      <<"ssa">>,  % compile:forms(.., [dssa])                | erlc +dssa mod.erl
      <<"core">>].% compile:forms(.., [to_core])             | erlc +to_core mod.erl
 

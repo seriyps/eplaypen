@@ -24,9 +24,13 @@ case $OUTPUT_FORMAT in
         erlc -Wall -$OUTPUT_FORMAT "$IN_FILE"
         cat "${MODULE}.${OUTPUT_FORMAT}"
         ;;
-    ssa)
-        erlc -Wall +dssa "$IN_FILE"
-        cat "${MODULE}.ssa"
+    abstr | ssa)
+        erlc -Wall +d${OUTPUT_FORMAT} "$IN_FILE"
+        cat "${MODULE}.${OUTPUT_FORMAT}"
+        ;;
+    kernel)
+        erlc -Wall +dkern "$IN_FILE"
+        cat "${MODULE}.${OUTPUT_FORMAT}"
         ;;
     core)
         erlc -Wall +to_core "$IN_FILE"
