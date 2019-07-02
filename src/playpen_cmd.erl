@@ -67,14 +67,21 @@ build_playpen_argv(Cmd, #{image := Image} = Opts) ->
                          os:find_executable("docker")
                  end,
     Cmd1 = ["-i", Image | Cmd],
-    PPOpts = maps:without([executable, sudo, image], Opts),
-    Cmd2 = add_playpen_opts(Cmd1, lists:sort(maps:to_list(PPOpts))),
+    PPOpts = maps:without([executable, sudo, image, timeout], Opts),
+    Cmd2 = [Executable, "run" | add_playpen_opts(Cmd1, lists:sort(maps:to_list(PPOpts)))],
+    Cmd3 = case maps:find(timeout, Opts) of
+               {ok, Timeout} ->
+                   TimeoutUtil = os:find_executable("timeout"),
+                   [TimeoutUtil, "-k", integer_to_list(Timeout + 2),
+                    integer_to_list(Timeout) | Cmd2];
+               error -> Cmd2
+           end,
     case maps:find(sudo, Opts) of
         {ok, true} ->
             Sudo = os:find_executable("sudo"),
-            [Sudo, Executable, "run" | Cmd2];
+            [Sudo | Cmd3];
         _ ->
-            [Executable, "run" | Cmd2]
+            Cmd3
     end.
     %% Cmd.
 
@@ -92,8 +99,6 @@ add_playpen_opts(Cmd, [{mount, Mounts} | Opts]) ->
                   ["--volume", unicode:characters_to_binary(V) | Acc]
           end, [], Mounts),
     MountsArg ++  add_playpen_opts(Cmd, Opts);
-add_playpen_opts(Cmd, [{timeout, V} | Opts]) ->
-    ["--stop-timeout", integer_to_list(V) | add_playpen_opts(Cmd, Opts)];
 add_playpen_opts(Cmd, [{memory_limit, V} | Opts]) ->
     %% Swap is not allowed!
     StrV = integer_to_list(V) ++ "m",
@@ -156,11 +161,12 @@ build_argv_full_test() ->
              mount => [{"/tmp", "/mnt", rw}],
              sudo => true
             },
-    ?assertEqual(["/usr/bin/sudo", "docker", "run",
+    ?assertEqual(["/usr/bin/sudo",
+                  "/usr/bin/timeout", "-k", "12", "10",
+                  "docker", "run",
                   "--cpus", "2",
-                  "--memory-swap", "100", "--memory", "100",
+                  "--memory-swap", "100m", "--memory", "100m",
                   "--volume", <<"/tmp:/mnt:rw">>,
-                  "--stop-timeout", "10",
                   "-i", "ubuntu", "cat"],
                  build_playpen_argv(["cat"], Opts)).
 
