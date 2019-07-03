@@ -19,7 +19,17 @@ head -c $INPUT_SIZE > "$IN_FILE"
 case $OUTPUT_FORMAT in
     beam)
         erlc -Wall "$IN_FILE"
-        erl -noshell +A 0 $ERL_EXTRA_OPTS -eval "c:m('${MODULE}'), erlang:halt(0)."
+        ;;
+    beam_info)
+        erlc -Wall +debug_info "$IN_FILE"
+        CODE='
+c:m('${MODULE}'),
+io:format("~n~n===.beam chunks===~n~n"),
+ChunkNames = [attributes, compile_info, exports, labeled_exports , imports, indexed_imports , locals, labeled_locals, atoms, abstract_code, case erlang:system_info(otp_release) > "19" of true -> debug_info; _ -> "Dbgi" end, "LitT", "StrT", "FunT", "Line", "Code"],
+{ok, {_, Chunks}} = beam_lib:chunks(code:which('${MODULE}'), ChunkNames, [allow_missing_chunks]),
+lists:foreach(fun({Name, Val}) -> io:format("~s:~n~p~n~n", [Name, Val]) end, Chunks),
+erlang:halt(0).'
+        erl -noshell +A 0 $ERL_EXTRA_OPTS -eval "${CODE}"
         ;;
     P | E | S)
         erlc -Wall -$OUTPUT_FORMAT "$IN_FILE"

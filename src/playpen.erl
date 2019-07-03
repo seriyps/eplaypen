@@ -44,6 +44,7 @@ cowboy_reload_routes() ->
 %% some info
 available_outputs() ->
     [<<"beam">>, % erl_lint                                 | erlc mod.erl
+     <<"beam_info">>, % beam_lib:chunks(...)
      <<"P">>,    % compile:forms(.., ['P'])                 | erlc -P mod.erl
      <<"abstr">>, % compile:forms(.., [dabstr])             | erlc +dabstr mod.erl
      <<"E">>,    % compile:forms(.., ['E'])                 | erlc -E mod.erl
