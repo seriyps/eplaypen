@@ -2,7 +2,7 @@
 {application, eplaypen,
  [
   {description, "An Erlang playpen"},
-  {vsn, "0.0.2"},
+  {vsn, "0.2.0"},
   {registered, [eplaypen_db]},
   {applications, [
                   kernel,
@@ -17,6 +17,29 @@
                  ]},
   {mod, {playpen, []}},
   {env, [
-         {releases, #{<<"21.3">> => "21.3.8.4-alpine"}}
+         {releases,
+          %% #{ Name => { DockerTag, Features } }
+          %% Features:
+          %% - dirty_io - add +SDio 0 to disable dirty io threads (saves some resources)
+          %% - to_dis - erlc supports `+to_dis` option
+          %% - ssa - erlc supports `+dssa` option
+          #{<<"22.0">> =>
+                {"22.0.4-alpine",
+                 [dirty_io, to_dis, ssa]},
+            <<"21.3">> =>
+                {"21.3.8.4-alpine",
+                 [dirty_io, to_dis]}
+           }
+         },
+         %% Postgres to store shared pastebins
+         {db, #{host => "localhost",
+                username => "eplaypen",
+                password => "eplaypen",
+                database => "eplaypen"}},
+         {db_pool, [{size, 2},
+                    {max_overflow, 5}]},
+         %% 16byte rc4 stream encryption key to obfuscate pastebin IDs
+         %% (kind of protection from enumeration)
+         {pastebin_id_key, <<>>}
         ]}
  ]}.

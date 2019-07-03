@@ -149,12 +149,10 @@ port_loop(Port, Opts, FinishBefore) ->
                              cb_state = CallbackState,
                              finish_before = FinishBefore}).
 
-port_loop(#{max_output_size := Max}, #loop_st{port = Port,
-                                              size = Size,
+port_loop(#{max_output_size := Max}, #loop_st{size = Size,
                                               acc = Acc,
                                               cb_state = CbState}) when Size > Max ->
     ?log(info, "Too large output. max=~p; size=~p", [Max, Size]),
-    erlang:port_close(Port),
     {error, {output_too_large, lists:reverse(Acc), CbState}};
 port_loop(Opts, #loop_st{acc = Acc, cb_state = CbState, finish_before = FinishBefore} = St) ->
     IoTimeout = maps:get(timeout, Opts, ?MAX_TIME_S * 1000),

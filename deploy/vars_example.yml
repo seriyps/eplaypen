@@ -15,12 +15,20 @@ db_password: "secret-db-password"
 pastebin_key: "<<97,181,182,103,183,183,244,87,217,109,159,157,43,218,51,106>>"
 cookie: "some-secret"
 
+# features:
+# - dirty_io - add +SDio 1 to minimize dirty io threads (save some resources)
+# - to_dis - erlc supports `+to_dis` option
+# - ssa - erlc supports `+dssa` option
 erl_releases:
   - name: 22.0
     tag: 22.0.4-alpine
+    features: [dirty_io, to_dis, ssa]
   - name: 21.3
     tag: 21.3.8.4-alpine
+    features: [dirty_io, to_dis]
   - name: 20.3
     tag: 20.3.8.22-alpine
+    features: [dirty_io, to_dis]
   - name: 19.3
     tag: 19.3.6.13-slim
+    features: []

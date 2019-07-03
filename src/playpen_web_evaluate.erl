@@ -83,26 +83,37 @@ from_json(Req, State) ->
 handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release">> := Release}) ->
     Releases = playpen:available_releases(),
     case {maps:find(Release, Releases), find_module_name(SourceCode)} of
-        {{ok, ReleaseTag}, {ok, Mod}} ->
+        {{ok, {ReleaseTag, Features}}, {ok, Mod}} ->
             Script = filename:join(["/mnt", "scripts", "evaluate.sh"]),
-            run(Req, State, ReleaseTag, [Script, Mod, integer_to_binary(iolist_size(SourceCode))], SourceCode);
+            Argv = [Script, Mod, integer_to_binary(iolist_size(SourceCode)), extra_erl_args(Features)],
+            run(Req, State, ReleaseTag, Argv, SourceCode);
         {error, _} ->
-            {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Unknown release ~p", [Release]), Req),
+            {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Unknown release '~s'", [Release]), Req),
             {ok, Req2, State};
         {_, error} ->
             {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State}
     end;
 handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release} = KV) ->
-    Output = maps:get(<<"emit">>, KV, maps:get(<<"output_format">>, KV, <<"beam">>)),
+    Emit0 = maps:get(<<"emit">>, KV, <<"beam">>),
     Formats = playpen:available_outputs(),
     Releases = playpen:available_releases(),
-    case {lists:member(Output, Formats),
+    case {lists:member(Emit0, Formats),
           maps:find(Release, Releases),
           find_module_name(SourceCode)} of
-        {true, {ok, ReleaseTag}, {ok, Mod}} ->
+        {true, {ok, {ReleaseTag, Features}}, {ok, Mod}} ->
             Script = filename:join(["/mnt", "scripts", "compile.sh"]),
-            run(Req, State, ReleaseTag, [Script, Mod, integer_to_binary(iolist_size(SourceCode)), Output], SourceCode);
+            case convert_emit(Emit0, Features) of
+                not_supported ->
+                    {ok, Req2} = cowboy_req:reply(
+                                   400, [],
+                                   io_lib:format("Output format '~s' not supported by '~s'",
+                                                 [Emit0, Release]), Req),
+                    {ok, Req2, State};
+                Emit ->
+                    Argv = [Script, Mod, integer_to_binary(iolist_size(SourceCode)), Emit, extra_erl_args(Features)],
+                    run(Req, State, ReleaseTag, Argv, SourceCode)
+            end;
         {_, _, error} ->
             {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State};
@@ -110,14 +121,37 @@ handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release"
             %% Invalid output format ~p or release ~p.
             {ok, Req2} = cowboy_req:reply(
                            400, [],
-                           io_lib:format("Invalid output format ~p or release ~p",
-                                         [Output, Release]), Req),
+                           io_lib:format("Invalid output format '~s' or release '~s'",
+                                         [Emit0, Release]), Req),
             {ok, Req2, State}
     end;
 handle_arguments(Req, State, Payload) ->
     %% Invalid payload ~p.
     {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Invalid payload ~p", [Payload]), Req),
     {ok, Req2, State}.
+
+extra_erl_args(Features) ->
+    Opts = lists:foldl(
+             fun(dirty_io, Acc) ->
+                     ["+SDio 1" | Acc];
+                (_, Acc) ->
+                     Acc
+             end, [], Features),
+    iolist_to_binary(lists:join(" ", Opts)).
+
+convert_emit(<<"ssa">> = E, Features) ->
+    case lists:member(ssa, Features) of
+        true -> E;
+        _ -> not_supported
+    end;
+convert_emit(<<"dis">> = E, Features) ->
+    case lists:member(to_dis, Features) of
+        true -> E;
+        false -> <<"dis_lt20">>
+    end;
+convert_emit(Emit, _) ->
+    Emit.
+
 
 
 -spec run(cowboy_req:req(), term(), unicode:chardata(), list(), iodata()) -> {ok, cowboy_req:req(), term()}.
@@ -134,7 +168,6 @@ run(Req, State, Release, Argv, SourceCode) ->
                        Req2
                end,
 
-    AppRoot = filename:absname(code:lib_dir(eplaypen)),
     PrivDir = filename:absname(code:priv_dir(eplaypen)),
     BindMount = [
                  {filename:join(PrivDir, "scripts"), "/mnt/scripts", ro}
@@ -209,3 +242,18 @@ find_module_name(Body) ->
         nomatch ->
             error
     end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+find_module_name_test() ->
+    ?assertEqual({ok, <<"m">>}, find_module_name(<<"-module(m).">>)),
+    ?assertEqual({ok, <<"m">>}, find_module_name(<<"\t \n-module\t\n(\t\nm\t\n)\t\n.">>)),
+    ?assertEqual({ok, <<"mY_MOD09">>}, find_module_name(<<"-module(mY_MOD09).">>)),
+    ?assertEqual({ok, <<"!@#$%">>}, find_module_name(<<"-module('!@#$%').">>)),
+    ?assertEqual({ok, <<"m">>}, find_module_name(<<"-'module'(m).">>)),
+    ?assertEqual(error, find_module_name(<<>>)),
+    ?assertEqual(error, find_module_name(<<"m">>)),
+    ?assertEqual(error, find_module_name(<<"-module('/').">>)).
+
+-endif.

@@ -4,6 +4,7 @@ set -e
 
 MODULE=$1
 INPUT_SIZE=$2
+ERL_EXTRA_OPTS=$3
 
 WORKDIR=~
 
@@ -23,4 +24,4 @@ catch T:R ->
 end,
 erlang:halt()."
 
-ERL_CRASH_DUMP=/dev/null erl -noshell -noinput +pc unicode +A 0 -eval "$RUNSNIP"
+ERL_CRASH_DUMP=/dev/null erl -noshell -noinput +pc unicode +A 0 $ERL_EXTRA_OPTS -eval "$RUNSNIP"
