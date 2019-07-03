@@ -221,7 +221,7 @@
         name: "erlang:{{ item.tag }}"
       loop: "{{ erl_releases }}"
       tags:
-        erl_version
+        - erl_version
 
     # Systemd
     - name: "Create systemd service"

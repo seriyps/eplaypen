@@ -32,3 +32,6 @@ erl_releases:
   - name: 19.3
     tag: 19.3.6.13-slim
     features: []
+  - name: 18.3
+    tag: 18.3.4.11-slim
+    features: []
