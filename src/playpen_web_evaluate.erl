@@ -173,7 +173,7 @@ run(Req, State, Release, Argv, SourceCode) ->
                  {filename:join(PrivDir, "scripts"), "/mnt/scripts", ro}
                 ],
     PPOpts = #{timeout => 15,
-               memory_limit => 64,
+               memory_limit => 100,
                image => iolist_to_binary(lists:join(":", ["erlang", Release])),
                cpu_limit => 1,
                mount => BindMount},
