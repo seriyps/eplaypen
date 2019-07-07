@@ -25,7 +25,7 @@ case $OUTPUT_FORMAT in
         escript $(dirname "$0")/beam_chunks.erl "${MODULE}"
         ;;
     P | E | S)
-        erlc -Wall -$OUTPUT_FORMAT "$IN_FILE"
+        erlc -Wall -${OUTPUT_FORMAT} "$IN_FILE"
         cat "${MODULE}.${OUTPUT_FORMAT}"
         ;;
     abstr | ssa)
@@ -42,12 +42,12 @@ case $OUTPUT_FORMAT in
         ;;
     dis)
         # Works on OTP >= 20
-        erlc -Wall +to_dis $IN_FILE
+        erlc -Wall +to_dis "$IN_FILE"
         cat "${MODULE}.dis"
         ;;
     dis_lt20)
-        erlc -Wall $IN_FILE
-        erl -noshell +A 0 $ERL_EXTRA_OPTS -eval "erts_debug:df('${MODULE}'), erlang:halt(0)."
+        erlc -Wall "$IN_FILE"
+        erl -noshell +A 0 ${ERL_EXTRA_OPTS} -eval "erts_debug:df('${MODULE}'), erlang:halt(0)."
         cat "${MODULE}.dis"
         ;;
 esac
