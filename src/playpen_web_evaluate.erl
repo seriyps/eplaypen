@@ -7,7 +7,7 @@
 
 -module(playpen_web_evaluate).
 
--export([init/3, handle/2, terminate/3]).
+-export([init/2, terminate/3]).
 
 -export([from_urlencoded/2, from_json/2]).
 
@@ -16,21 +16,18 @@
 -define(BODY_LIMIT, 102400).
 
 
--spec init({atom(), atom()}, cowboy_req:req(), [evaluate | compile]) ->
+-spec init(cowboy_req:req(), [evaluate | compile]) ->
                   {ok, cowboy_req:req(), any()}.
-init({tcp, http}, Req, Opts) ->
-    {ok, Req, Opts}.
-
-handle(Req, State) ->
+init(Req, Opts) ->
     ?log(debug, "handle"),
     case cowboy_req:parse_header(<<"content-type">>, Req) of
-        {ok, {<<"application">>, <<"x-www-form-urlencoded">>, _}, Req2} ->
-            handle_body(Req2, State, from_urlencoded);
-        {ok, {<<"application">>, <<"json">>, _}, Req2} ->
-            handle_body(Req2, State, from_json);
+        {<<"application">>, <<"x-www-form-urlencoded">>, _} ->
+            handle_body(Req, Opts, from_urlencoded);
+        {<<"application">>, <<"json">>, _} ->
+            handle_body(Req, Opts, from_json);
         {error, badarg} ->
-            {ok, Req2} = cowboy_req:reply(415, Req),
-            {ok, Req2, State}
+            Req2 = cowboy_req:reply(415, Req),
+            {ok, Req2, Opts}
     end.
 
 terminate(_, _Req, _State) ->
@@ -39,7 +36,7 @@ terminate(_, _Req, _State) ->
 handle_body(Req, State, ParserCallback) ->
     case cowboy_req:has_body(Req) of
         false ->
-            {ok, Req2} = cowboy_req:reply(204, Req),
+            Req2 = cowboy_req:reply(204, Req),
             {ok, Req2, State};
         true ->
             ?MODULE:ParserCallback(Req, State)
@@ -48,35 +45,22 @@ handle_body(Req, State, ParserCallback) ->
 
 from_urlencoded(Req, State) ->
     ?log(debug, "Urlencoded req"),
-    case cowboy_req:body_qs(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
-        {ok, KV, Req2} ->
-            handle_arguments(Req2, State, maps:from_list(KV));
-        {badlength, Req2} ->
-            %% Request body too long
-            {ok, Req2} = cowboy_req:reply(400, Req),
-            {ok, Req2, State};
-        {error, _Reason} ->
-            %% atom_to_list(Reason)
-            {ok, Req2} = cowboy_req:reply(400, Req),
-            {ok, Req2, State}
-    end.
+    {ok, KV, Req1} = cowboy_req:read_urlencoded_body(Req, #{length => ?BODY_LIMIT}),
+    handle_arguments(Req1, State, maps:from_list(KV)).
 
 from_json(Req, State) ->
     ?log(debug, "JSON req"),
-    case cowboy_req:body(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
+    case cowboy_req:read_body(Req, #{length => ?BODY_LIMIT}) of
         {ok, Data, Req1} ->
             try jiffy:decode(Data, [return_maps]) of
                 KV when is_map(KV) ->
                     handle_arguments(Req1, State, KV)
             catch throw:_ ->
-                    {ok, Req2} = cowboy_req:reply(400, [], "Invalid JSON", Req1),
+                    Req2 = cowboy_req:reply(400, #{}, "Invalid JSON", Req1),
                     {ok, Req2, State}
             end;
         {more, _, Req1} ->
-            {ok, Req2} = cowboy_req:reply(400, [], "Request body too long", Req1),
-            {ok, Req2, State};
-        {error, Reason} ->
-            {ok, Req2} = cowboy_req:reply(400, [], atom_to_list(Reason), Req),
+            Req2 = cowboy_req:reply(400, #{}, "Request body too long", Req1),
             {ok, Req2, State}
     end.
 
@@ -88,10 +72,10 @@ handle_arguments(Req, [evaluate] = State, #{<<"code">> := SourceCode, <<"release
             Argv = [Script, Mod, integer_to_binary(iolist_size(SourceCode)), extra_erl_args(Features)],
             run(Req, State, ReleaseTag, Argv, SourceCode);
         {error, _} ->
-            {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Unknown release '~s'", [Release]), Req),
+            Req2 = cowboy_req:reply(400, #{}, io_lib:format("Unknown release '~s'", [Release]), Req),
             {ok, Req2, State};
         {_, error} ->
-            {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
+            Req2 = cowboy_req:reply(400, #{}, "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State}
     end;
 handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release">> := Release} = KV) ->
@@ -105,29 +89,29 @@ handle_arguments(Req, [compile] = State, #{<<"code">> := SourceCode, <<"release"
             Script = filename:join(["/mnt", "scripts", "compile.sh"]),
             case convert_emit(Emit0, Features) of
                 not_supported ->
-                    {ok, Req2} = cowboy_req:reply(
-                                   400, [],
-                                   io_lib:format("Output format '~s' not supported by '~s'",
-                                                 [Emit0, Release]), Req),
+                    Req2 = cowboy_req:reply(
+                             400, #{},
+                             io_lib:format("Output format '~s' not supported by '~s'",
+                                           [Emit0, Release]), Req),
                     {ok, Req2, State};
                 Emit ->
                     Argv = [Script, Mod, integer_to_binary(iolist_size(SourceCode)), Emit, extra_erl_args(Features)],
                     run(Req, State, ReleaseTag, Argv, SourceCode)
             end;
         {_, _, error} ->
-            {ok, Req2} = cowboy_req:reply(400, [], "Missing or invalid '-module' attribute.", Req),
+            Req2 = cowboy_req:reply(400, #{}, "Missing or invalid '-module' attribute.", Req),
             {ok, Req2, State};
         {_, _, _} ->
             %% Invalid output format ~p or release ~p.
-            {ok, Req2} = cowboy_req:reply(
-                           400, [],
-                           io_lib:format("Invalid output format '~s' or release '~s'",
-                                         [Emit0, Release]), Req),
+            Req2 = cowboy_req:reply(
+                     400, #{},
+                     io_lib:format("Invalid output format '~s' or release '~s'",
+                                   [Emit0, Release]), Req),
             {ok, Req2, State}
     end;
 handle_arguments(Req, State, Payload) ->
     %% Invalid payload ~p.
-    {ok, Req2} = cowboy_req:reply(400, [], io_lib:format("Invalid payload ~p", [Payload]), Req),
+     Req2 = cowboy_req:reply(400, #{}, io_lib:format("Invalid payload ~p", [Payload]), Req),
     {ok, Req2, State}.
 
 extra_erl_args(Features) ->
@@ -161,10 +145,10 @@ run(Req, State, Release, Argv, SourceCode) ->
                       text -> <<"text/plain">>;
                       binary -> <<"octet/stream">>
                   end,
-    {ok, Req1} = cowboy_req:chunked_reply(200, [{<<"content-type">>, ContentType}], Req),
+    Req1 = cowboy_req:stream_reply(200, #{<<"content-type">> => ContentType}, Req),
     Callback = fun(Chunk, Req2) ->
                        ?log(debug, "Chunk ~p", [iolist_size(Chunk)]),
-                       ok = cowboy_req:chunk(output_frame(Chunk, OutForm), Req2),
+                       ok = cowboy_req:stream_body(output_frame(Chunk, OutForm), nofin, Req2),
                        Req2
                end,
 
@@ -184,13 +168,13 @@ run(Req, State, Release, Argv, SourceCode) ->
                output_callback_state => Req1},
     case playpen_cmd:cmd(Argv, SourceCode, PPOpts, IOOpts) of
         {ok, {Code, _, Req3}} ->
-            ok = cowboy_req:chunk(retcode_frame(Code, OutForm), Req3),
+            ok = cowboy_req:stream_body(retcode_frame(Code, OutForm), fin, Req3),
             {ok, Req3, State};
         {error, {output_too_large, _, Req3}} ->
-            ok = cowboy_req:chunk(output_too_large_frame(OutForm), Req3),
+            ok = cowboy_req:stream_body(output_too_large_frame(OutForm), fin, Req3),
             {ok, Req3, State};
         {error, {timeout, _, Req3}} ->
-            ok = cowboy_req:chunk(timeout_frame(OutForm), Req3),
+            ok = cowboy_req:stream_body(timeout_frame(OutForm), fin, Req3),
             {ok, Req3, State}
     end.
 

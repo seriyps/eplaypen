@@ -6,8 +6,9 @@
 %%% Created : 26 Jan 2015 by Sergey Prokhorov <me@seriyps.ru>
 
 -module(playpen_web_pastebin).
+-behaviour(cowboy_rest).
 
--export([init/3]).
+-export([init/2]).
 -export([allowed_methods/2, content_types_accepted/2, content_types_provided/2,
         resource_exists/2]).
 -export([to_qs/2, to_json/2,
@@ -29,8 +30,8 @@
 -define(BODY_LIMIT, 102400).
 -define(DB_POOL, playpen_db).
 
-init({tcp, http}, _Req, _Opts) ->
-    {upgrade, protocol, cowboy_rest}.
+init(Req, Opts) ->
+    {cowboy_rest, Req, Opts}.
 
 
 allowed_methods(Req, State) ->
@@ -49,17 +50,17 @@ content_types_provided(Req, State) ->
 
 resource_exists(Req, State) ->
     case cowboy_req:binding(paste_id, Req) of
-		{undefined, Req2} ->
-			{false, Req2, State};
-		{PasteID, Req2} ->
+		undefined ->
+			{false, Req, State};
+		PasteID ->
             Decrypted = decrypt(unhex(PasteID), ?KEY),
 			case get_paste(Decrypted) of
 				{ok, Paste} ->
-                    {true, Req2, Paste};
+                    {true, Req, Paste};
 				{error, not_found} ->
-                    {false, Req2, PasteID};
+                    {false, Req, PasteID};
                 {error, _} ->
-                    {halt, Req2, State}
+                    {halt, Req, State}
 			end
 	end.
 
@@ -80,32 +81,21 @@ to_json(Req, #{code := Code, release := Release, emit := Emit, pk := Pk} = State
 
 
 from_qs(Req, State) ->
-    case cowboy_req:body_qs(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
-        {ok, KV, Req1} ->
-            handle_kv(KV, Req1, State);
-        {badlength, Req1} ->
-            {ok, Req2} = cowboy_req:reply(400, [], "Request body too long", Req1),
-            {ok, Req2, State};
-        {error, Reason} ->
-            {ok, Req2} = cowboy_req:reply(400, [], atom_to_list(Reason), Req),
-            {ok, Req2, State}
-    end.
+    {ok, KV, Req1} = cowboy_req:read_urlencoded_body(Req, #{length => ?BODY_LIMIT}),
+    handle_kv(KV, Req1, State).
 
 from_json(Req, State) ->
-    case cowboy_req:body(Req, [{length, ?BODY_LIMIT}, {read_length, ?BODY_LIMIT}]) of
+    case cowboy_req:read_body(Req, #{length => ?BODY_LIMIT}) of
         {ok, Data, Req1} ->
             try jiffy:decode(Data) of
                 {KV} ->
                     handle_kv(KV, Req1, State)
             catch throw:_ ->
-                    {ok, Req2} = cowboy_req:reply(400, [], "Invalid JSON", Req1),
+                    Req2 = cowboy_req:reply(400, #{}, "Invalid JSON", Req1),
                     {ok, Req2, State}
             end;
         {more, _, Req1} ->
-            {ok, Req2} = cowboy_req:reply(400, [], "Request body too long", Req1),
-            {ok, Req2, State};
-        {error, Reason} ->
-            {ok, Req2} = cowboy_req:reply(400, [], atom_to_list(Reason), Req),
+            Req2 = cowboy_req:reply(400, #{}, "Request body too long", Req1),
             {ok, Req2, State}
     end.
 
@@ -122,10 +112,10 @@ handle_kv(KV, Req, State) ->
                            expires => null}),
             {{true, <<"/api/pastebin/", (hex(encrypt(Pk, ?KEY)))/binary>>}, Req, State};
         {_, _} ->
-            {ok, Req2} = cowboy_req:reply(
-                           400, [],
-                           io_lib:format("Invalid emit ~p or release ~p",
-                                         [Format, Release]), Req),
+            Req2 = cowboy_req:reply(
+                     400, #{},
+                     io_lib:format("Invalid emit ~p or release ~p",
+                                   [Format, Release]), Req),
             {halt, Req2, State}
     end.
 

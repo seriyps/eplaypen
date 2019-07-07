@@ -28,9 +28,9 @@ start_cowboy() ->
     Ip = {127, 0, 0, 1},
     Concurrency = 10,
 	Dispatch = cowboy_router:compile(cowboy_routes()),
-	{ok, _} = cowboy:start_http(http, Concurrency, [{port, Port}, {ip, Ip}],
-                                [{env, [{dispatch, Dispatch}]}]),
-    ranch:set_max_connections(http, Concurrency),
+	{ok, _} = cowboy:start_clear(
+                http, [{port, Port}, {ip, Ip}, {max_connections, Concurrency}],
+                #{env => #{dispatch => Dispatch}}),
     ok.
 
 cowboy_reload_routes() ->
