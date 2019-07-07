@@ -217,7 +217,7 @@ find_module_name(Body) ->
     %% "-module('!@#$%')."
     %% "-'module'(m).
     %% Don't allow $/, $" and $. in name (used in FS path).
-    Rule = <<"\\s*-\\s*'?module'?\\s*\\(\\s*(([a-z][0-9a-z_A-Z]*)|'([^'/.\"]+)')\\s*\\)\\s*\\.">>,
+    Rule = <<"\\s*-\\s*'?module'?\\s*\\(\\s*(([a-z][0-9a-z_A-Z]*)|'([^'/.\"\\\\]+)')\\s*\\)\\s*\\.">>,
     case re:run(Body, Rule, [multiline, {capture, [2, 3], binary}]) of
         {match, [<<>>, Mod]} ->
             {ok, Mod};
@@ -238,6 +238,7 @@ find_module_name_test() ->
     ?assertEqual({ok, <<"m">>}, find_module_name(<<"-'module'(m).">>)),
     ?assertEqual(error, find_module_name(<<>>)),
     ?assertEqual(error, find_module_name(<<"m">>)),
-    ?assertEqual(error, find_module_name(<<"-module('/').">>)).
+    ?assertEqual(error, find_module_name(<<"-module('/').">>)),
+    ?assertEqual(error, find_module_name(<<"-module('\\wasd').">>)).
 
 -endif.
