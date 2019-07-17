@@ -24,6 +24,16 @@ case $OUTPUT_FORMAT in
         erlc -Wall +debug_info "$IN_FILE"
         escript $(dirname "$0")/beam_chunks.erl "${MODULE}"
         ;;
+    tokens)
+        CODE='{ok, B} = file:read_file("'$IN_FILE'"),
+               Res = case erl_scan:string(unicode:characters_to_list(B), 0, [text, return]) of
+                 {ok, Tokens, _End} -> Tokens;
+                 Other -> Other
+               end,
+               io:format("~p~n", [Res]),
+               erlang:halt(0).'
+        erl -noshell +A 0 ${ERL_EXTRA_OPTS} -eval "$CODE"
+        ;;
     P | E | S)
         erlc -Wall -${OUTPUT_FORMAT} "$IN_FILE"
         cat "${MODULE}.${OUTPUT_FORMAT}"
