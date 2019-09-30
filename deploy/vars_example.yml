@@ -20,6 +20,9 @@ cookie: "some-secret"
 # - to_dis - erlc supports `+to_dis` option
 # - ssa - erlc supports `+dssa` option
 erl_releases:
+  - name: 22.1
+    tag: 22.1.1-alpine
+    features: [dirty_io, to_dis, ssa]
   - name: 22.0
     tag: 22.0.4-alpine
     features: [dirty_io, to_dis, ssa]
