@@ -95,7 +95,9 @@ nano deploy/hosts
 Run ansible
 
 ```
-nsible-playbook -D -K -i deploy/hosts deploy/main.yml
+ansible-playbook -D -K -i deploy/hosts deploy/main.yml
 ```
 
 Be careful to not run it with `postgres` tag agin - it may wipe your pastebin database!
+Use `--skip-tags postgres` for re-deployment / upgrades.
+`--tags=src,conf,erl_version,release,start` for OTP version updates.
