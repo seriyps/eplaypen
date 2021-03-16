@@ -25,7 +25,8 @@ catch T:R ->
       io:format(standard_error, \"~p(~p)~n~p\", [T, R, erlang:get_stacktrace()]);
     false ->
       io:format(standard_error, \"~p(~p)\", [T, R])
-  end
+  end,
+  erlang:halt(1)
 end,
 erlang:halt()."
 
