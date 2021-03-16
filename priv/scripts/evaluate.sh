@@ -18,7 +18,8 @@ erlc -Wall "$IN_FILE"
 
 RUNSNIP="
 io:setopts([{encoding, utf8}]),
-try '$MODULE':main()
+try '$MODULE':main() of
+  Result -> io:format(\"~n------~nReturned value:~n~p~n\", [Result])
 catch T:R ->
   case erlang:is_builtin(erlang, get_stacktrace, 0) of
     true ->
