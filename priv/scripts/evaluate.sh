@@ -20,7 +20,12 @@ RUNSNIP="
 io:setopts([{encoding, utf8}]),
 try '$MODULE':main()
 catch T:R ->
-    io:format(standard_error, \"~p(~p)~n~p\", [T, R, erlang:get_stacktrace()])
+  case erlang:is_builtin(erlang, get_stacktrace, 0) of
+    true ->
+      io:format(standard_error, \"~p(~p)~n~p\", [T, R, erlang:get_stacktrace()]);
+    false ->
+      io:format(standard_error, \"~p(~p)\", [T, R])
+  end
 end,
 erlang:halt()."
 
