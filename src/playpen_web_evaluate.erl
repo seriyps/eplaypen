@@ -129,9 +129,10 @@ convert_emit(<<"ssa">> = E, Features) ->
         _ -> not_supported
     end;
 convert_emit(<<"dis">> = E, Features) ->
-    case lists:member(to_dis, Features) of
-        true -> E;
-        false -> <<"dis_lt20">>
+    case {lists:member(to_dis, Features), lists:member(no_dis, Features)} of
+        {true, false} -> E;
+        {false, false} -> <<"dis_lt20">>;
+        {false, true} -> not_supported
     end;
 convert_emit(<<"asmdump">> = E, Features) ->
     case lists:member(asmdump, Features) of
