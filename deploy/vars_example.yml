@@ -22,7 +22,7 @@ cookie: "some-secret"
 erl_releases:
   - name: 24-RC1
     tag: 24.0-rc1-alpine
-    features: [dirty_io, to_dis, ssa]
+    features: [dirty_io, to_dis, ssa, asmdump]
   - name: 23.3
     tag: 23.3-alpine
     features: [dirty_io, to_dis, ssa]

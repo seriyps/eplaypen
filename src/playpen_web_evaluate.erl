@@ -133,6 +133,11 @@ convert_emit(<<"dis">> = E, Features) ->
         true -> E;
         false -> <<"dis_lt20">>
     end;
+convert_emit(<<"asmdump">> = E, Features) ->
+    case lists:member(asmdump, Features) of
+        true -> E;
+        _ -> not_supported
+    end;
 convert_emit(Emit, _) ->
     Emit.
 
@@ -156,14 +161,14 @@ run(Req, State, Release, Argv, SourceCode) ->
     BindMount = [
                  {filename:join(PrivDir, "scripts"), "/mnt/scripts", ro}
                 ],
-    PPOpts = #{timeout => 15,
+    PPOpts = #{timeout => 25,
                memory_limit => 100,
                image => iolist_to_binary(lists:join(":", ["erlang", Release])),
                cpu_limit => 1,
                mount => BindMount},
     IOOpts = #{max_output_size => 512 * 1024,
                collect_output => false,
-               timeout => 10000,
+               timeout => 20000,
                output_callback => Callback,
                output_callback_state => Req1},
     case playpen_cmd:cmd(Argv, SourceCode, PPOpts, IOOpts) of

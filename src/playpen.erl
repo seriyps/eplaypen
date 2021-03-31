@@ -53,7 +53,9 @@ available_outputs() ->
      <<"dis">>,  % compile:forms(.., []), erts_debug:df(..) | erlc mod.erl && erl -eval 'erts_debug:df(mod).'
      <<"kernel">>, % compile:forms(.., [dkernel])           | erlc +dkernel mod.erl
      <<"ssa">>,  % compile:forms(.., [dssa])                | erlc +dssa mod.erl
-     <<"core">>].% compile:forms(.., [to_core])             | erlc +to_core mod.erl
+     <<"core">>, % compile:forms(.., [to_core])             | erlc +to_core mod.erl
+     <<"asmdump">> % erl +asmdump
+    ].
 
 -spec available_releases() -> #{Name :: binary() => Image :: string()}.
 available_releases() ->

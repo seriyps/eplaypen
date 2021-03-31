@@ -60,4 +60,9 @@ case $OUTPUT_FORMAT in
         erl -noshell +A 0 ${ERL_EXTRA_OPTS} -eval "erts_debug:df('${MODULE}'), erlang:halt(0)."
         cat "${MODULE}.dis"
         ;;
+    asmdump)
+        erlc -Wall "$IN_FILE"
+        erl +asmdump -noshell +A 0 ${ERL_EXTRA_OPTS} -eval "code:load_file('${MODULE}'), erlang:halt(0)."
+        cat "${MODULE}.asm"
+        ;;
 esac
