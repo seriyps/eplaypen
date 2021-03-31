@@ -20,9 +20,12 @@ cookie: "some-secret"
 # - to_dis - erlc supports `+to_dis` option
 # - ssa - erlc supports `+dssa` option
 erl_releases:
+  - name: 24-RC2
+    tag: 24.0-rc2-alpine
+    features: [dirty_io, ssa, asmdump]
   - name: 24-RC1
     tag: 24.0-rc1-alpine
-    features: [dirty_io, to_dis, ssa, asmdump]
+    features: [dirty_io, ssa, asmdump]
   - name: 23.3
     tag: 23.3-alpine
     features: [dirty_io, to_dis, ssa]
