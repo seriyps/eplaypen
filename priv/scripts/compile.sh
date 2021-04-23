@@ -62,7 +62,7 @@ case $OUTPUT_FORMAT in
         ;;
     asmdump)
         erlc -Wall "$IN_FILE"
-        erl +asmdump -noshell +A 0 ${ERL_EXTRA_OPTS} -eval "code:load_file('${MODULE}'), erlang:halt(0)."
+        erl +JDdump true -noshell +A 0 ${ERL_EXTRA_OPTS} -eval "code:load_file('${MODULE}'), erlang:halt(0)."
         cat "${MODULE}.asm"
         ;;
 esac

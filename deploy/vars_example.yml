@@ -19,12 +19,10 @@ cookie: "some-secret"
 # - dirty_io - add +SDio 1 to minimize dirty io threads (save some resources)
 # - to_dis - erlc supports `+to_dis` option
 # - ssa - erlc supports `+dssa` option
+# - asmdump - `erl` supports `+JDdump` flag to dump loaded modules as assembler listing
 erl_releases:
-  - name: 24-RC2
-    tag: 24.0-rc2-alpine
-    features: [dirty_io, no_dis, ssa, asmdump]
-  - name: 24-RC1
-    tag: 24.0-rc1-alpine
+  - name: 24-RC3
+    tag: 24.0-rc3-alpine
     features: [dirty_io, no_dis, ssa, asmdump]
   - name: 23.3
     tag: 23.3-alpine
