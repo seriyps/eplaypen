@@ -10,6 +10,8 @@ $(function(){
         // API for output area
         var self = this;
         var $el = $(selector);
+        var stdout = "";
+        var lastLanguage = null;
         this.autoscroll = false;
 
         function maybeScroll() {
@@ -20,11 +22,15 @@ $(function(){
         }
 
         this.reset = function() {
+            stdout = "";
+            lastLanguage = null;
             $el.empty()
+               .removeAttr("class");
         };
 
         this.addStdout = function(text) {
-            var $chunk = $("<span/>");
+            stdout = stdout + text;
+            var $chunk = $("<code/>");
             $chunk.text(text);
             $el.append($chunk);
             maybeScroll();
@@ -63,6 +69,18 @@ $(function(){
                 .addClass("error");
             $el.append($chunk);
         }
+        this.syntaxHighlight = function(language) {
+            if (!stdout) return false;  // nothing to highlight
+            if (language) {
+                $el.attr("class", "language-" + language)
+                return hljs.highlightElement($el[0]);
+            } else {
+                var text = stdout;
+                self.reset();
+                self.addStdout(text);
+                return false;
+            }
+        }
     }
 
     function Controls(transport, output, pastebin) {
@@ -74,13 +92,15 @@ $(function(){
             $release = $("#release"),
             $keyboard = $("#kb-layout"),
             $autoscroll = $("#autoscroll"),
+            $highlight = $("#syntax-hl"),
             $example = $("#example");
         var $share = $("#share"),
             $sharePanel = $("#share-panel"),
             $sharePanelLink = $("#share-panel-link", $sharePanel),
             $sharePanelSocial = $("#share-panel-social", $sharePanel);
         var $buttons = $([$evaluate[0], $compile[0]]);
-        this.$switches = $([$emit[0], $release[0], $keyboard[0], $autoscroll[0]]);
+        var currentSyntax = null;
+        this.$switches = $([$emit[0], $release[0], $keyboard[0], $autoscroll[0], $highlight[0]]);
 
         // editor
         this.editor = ace.edit("editor");
@@ -99,12 +119,13 @@ $(function(){
                 release: $release.val(),
                 keyboard: $keyboard.val(),
                 autoscroll: $autoscroll.prop("checked"),
+                autoscroll: $highlight.prop("checked"),
                 code: self.editorSession.getValue()
             }
         }
         this.deserialize = function(obj) {
             var now = self.serialize();
-            var changed = ["emit", "release", "keyboard", "autoscroll", "code"].filter(function(k) {
+            var changed = ["emit", "release", "keyboard", "autoscroll", "highlight", "code"].filter(function(k) {
                 return (k in obj) && (obj[k] != now[k]);
             });
             changed.forEach(function(k) {
@@ -122,13 +143,20 @@ $(function(){
                     case "autoscroll":
                     $autoscroll.prop("checked", v).trigger("change")
                     break
+                    case "highlight":
+                    $highlight.prop("checked", v).trigger("change")
+                    break
                     case "code":
                     self.editorSession.setValue(v)
                     break
                 }
             })
         }
-
+        function maybeHighlight() {
+            if (currentSyntax && $highlight.prop("checked")) {
+                output.syntaxHighlight(currentSyntax);
+            }
+        }
         // compile/evaluate
         var progress = false;
         this.evaluate = function() {
@@ -144,6 +172,10 @@ $(function(){
                 .always(function() {
                     progress = false;
                     $buttons.prop("disabled", false);
+                })
+                .done(function() {
+                    currentSyntax = "erlang"
+                    maybeHighlight();
                 })
             ga('send', 'event', 'evaluate', 'submitted', 'r:' + $release.val());
         };
@@ -162,6 +194,17 @@ $(function(){
                 .always(function() {
                     progress = false;
                     $buttons.prop("disabled", false);
+                })
+                .done(function() {
+                    var highlightable = {"tokens": "erlang",
+                                         "P": "erlang",
+                                         "abstr": "erlang",
+                                         "E": "erlang",
+                                         "ssa": "llvm",
+                                         "S": "erlang",
+                                         "asmdump": "x86asm"};
+                    currentSyntax = highlightable[$emit.val()];
+                    maybeHighlight();
                 })
             ga('send', 'event', 'compile', 'submitted', 'r:' + $release.val() + ';e:' + $emit.val());
         };
@@ -279,6 +322,12 @@ $(function(){
         $autoscroll.on('change', function() {
             output.autoscroll = $autoscroll.prop("checked");
             ga('send', 'event', 'ui', 'autoscroll', $autoscroll.prop("checked"));
+        })
+
+        // highlight
+        $highlight.on('change', function() {
+            output.syntaxHighlight($highlight.prop("checked") ? currentSyntax : false);
+            ga('send', 'event', 'ui', 'syntax-hl', $highlight.prop("checked"));
         })
 
         // shortcuts

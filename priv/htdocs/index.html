@@ -5,6 +5,7 @@
         <title>Erlang web playpen</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/assets/main.css"/>
+        <link rel="stylesheet" href="/assets/github.min.css"/>
         <script src="//code.jquery.com/jquery-2.1.3.min.js" charset="utf-8"></script>
         <script src="//cdn.jsdelivr.net/ace/1.1.8/min/ace.js" charset="utf-8"></script>
         <script>
@@ -17,6 +18,7 @@
          ga('send', 'pageview');
 
         </script>
+        <script src="/assets/highlight.min.js" charset="utf-8"></script>
         <script src="/assets/main.js" charset="utf-8"></script>
 
         <meta  name=description content="Online erlang compiler and evaluator. Run any erlang program in your browser." />
@@ -71,6 +73,10 @@
             <label title="scroll following program output">
                 <input type="checkbox" id="autoscroll"/>
                 Scroll output
+            </label>
+            <label title="enable output syntax highlighting">
+                <input type="checkbox" id="syntax-hl"/>
+                Highlight output syntax
             </label>
             <button id="share" title="Save snippet and share with others">share</button>
             <!-- <select id="example" class="blink" title="Examples">
