@@ -21,6 +21,9 @@ cookie: "some-secret"
 # - ssa - erlc supports `+dssa` option
 # - asmdump - `erl` supports `+JDdump` flag to dump loaded modules as assembler listing
 erl_releases:
+  - name: 24.2
+    tag: 24.2-alpine
+    features: [dirty_io, no_dis, ssa, asmdump]
   - name: 24.1
     tag: 24.1-alpine
     features: [dirty_io, no_dis, ssa, asmdump]
