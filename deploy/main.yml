@@ -219,6 +219,7 @@
     - name: "Pull docker images"
       docker_image:
         name: "erlang:{{ item.tag }}"
+        source: "pull"
       loop: "{{ erl_releases }}"
       tags:
         - erl_version
