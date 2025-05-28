@@ -162,20 +162,20 @@ create_paste(#{code := Code, release := Release, emit := Emit, expires := Expire
 
 
 encrypt(Pk, Key) ->
-    St = crypto:stream_init(rc4, Key),
     PkBin = case Pk of
                 _ when Pk =< 16#FFFF ->   <<Pk:16/little>>; % 65535
                 _ when Pk =< 16#FFFFFF -> <<Pk:24/little>>; % 16777215
                 _ ->                      <<Pk:32/little>>
             end,
-    {_, Encrypted} = crypto:stream_encrypt(St, PkBin),
+    Encrypted = crypto:crypto_one_time(
+                  aes_128_ctr, Key, <<0:128>>, PkBin, [{encrypt, true}]),
     %% lager:info("Orig: ~w, Encrypted: ~w, ~w, ~w",
     %%            [PkBin, Encrypted, Pk, begin <<D:16/little>> = Encrypted, D end]),
     Encrypted.
 
 decrypt(Encrypted, Key) ->
-    St = crypto:stream_init(rc4, Key),
-    {_, Decrypted} = crypto:stream_decrypt(St, Encrypted),
+    Decrypted = crypto:crypto_one_time(
+                  aes_128_ctr, Key, <<0:128>>, Encrypted, [{encrypt, false}]),
     case Decrypted of
         <<Pk:32/little>> -> Pk;
         <<Pk:24/little>> -> Pk;
@@ -194,3 +194,16 @@ unhex(Chars) ->
                  (C) when C > $W -> C - $W
               end,
     << <<(UnHChar(C)):4>> || <<C>> <= Chars>>.
+
+-ifdef(TEST).
+
+-include_lib("eunit/include/eunit.hrl").
+
+encryption_test() ->
+    application:start(crypto),
+    Key = crypto:strong_rand_bytes(16),
+    Pk = 12345,
+    Enc = encrypt(Pk, Key),
+    ?assertEqual(Pk, decrypt(Enc, Key)).
+
+-endif.
