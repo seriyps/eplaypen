@@ -55,7 +55,7 @@
         skeleton: /etc/skel
     - name: "install rebar3"
       get_url:
-        url: https://github.com/erlang/rebar3/releases/download/3.11.1/rebar3
+        url: https://github.com/erlang/rebar3/releases/download/3.21.0/rebar3
         dest: /usr/local/bin/rebar3
         owner: root
         group: root
