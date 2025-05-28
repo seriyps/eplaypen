@@ -131,7 +131,7 @@
     # Sources
     - name: "Clone code"
       git:
-        repo: "git@seriyps.ru:eplaypen.git"
+        repo: "git@seriyps.com:eplaypen.git"
         dest: "{{ workdir }}"
         accept_hostkey: true
         version: "{{ branch | default('master') }}"
